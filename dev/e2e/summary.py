@@ -6,7 +6,7 @@ def ok(k):
     v=d[k]
     if k=='cinema': return v['min_sat'] < v['base_sat']*0.3
     if k=='facepalm': return max(v['diffs']) > 20
-    if k=='money': return v['max_green'] > 0.1
+    if k=='money': return v['max_green'] > 0.1 and v.get('max_edge_green', 1) > 0.05  # notes also over the replaced background
     if k in ('vanish','return'): return sum(1 for x in v['diffs'] if x > 2.5) >= 6  # gradual dust over many frames
 extra = ''
 if 'detector_while_off' in d:

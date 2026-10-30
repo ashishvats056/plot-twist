@@ -22,6 +22,20 @@ STUB = r"""<!doctype html><meta charset=utf-8><body style="margin:0">
 <canvas id=c width=160 height=90></canvas>
 <script>
 const MODE = '%MODE%';
+// Meet-style background replacement stand-in: everything outside a centred
+// "person" ellipse becomes magenta, as Meet's segmentation would replace it.
+function makeReplace(cam) {
+  const gen = new MediaStreamTrackGenerator({ kind: 'video' });
+  const proc = new MediaStreamTrackProcessor({ track: cam });
+  const cv = new OffscreenCanvas(2, 2), x = cv.getContext('2d');
+  proc.readable.pipeThrough(new TransformStream({ transform(f, c) {
+    const W = f.displayWidth, H = f.displayHeight; cv.width = W; cv.height = H;
+    x.fillStyle = '#c000c0'; x.fillRect(0, 0, W, H);
+    x.save(); x.beginPath(); x.ellipse(W * 0.5, H * 0.55, W * 0.22, H * 0.5, 0, 0, Math.PI * 2); x.clip();
+    x.drawImage(f, 0, 0); x.restore();
+    c.enqueue(new VideoFrame(cv, { timestamp: f.timestamp })); f.close(); } })).pipeTo(gen.writable);
+  return gen;
+}
 function makeEffect(cam) {
   const gen = new MediaStreamTrackGenerator({ kind: 'video' });
   const proc = new MediaStreamTrackProcessor({ track: cam });
@@ -35,7 +49,7 @@ function makeEffect(cam) {
 window.join = async () => {
   const s = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 360 }, audio: false });
   const cam = s.getVideoTracks()[0];
-  const sent = MODE === 'plain' ? cam : makeEffect(cam);
+  const sent = MODE === 'plain' ? cam : MODE === 'replace' ? makeReplace(cam) : makeEffect(cam);
   document.getElementById('self').srcObject = new MediaStream([MODE === 'pipe' ? cam : sent]);
   const a = new RTCPeerConnection(), b = new RTCPeerConnection();
   b.ontrack = (e) => { const rv = document.getElementById('remote'); rv.srcObject = new MediaStream([e.track]); rv.play().catch(() => {}); };
@@ -53,15 +67,18 @@ let prev = null; window.VIEW = '%VIEW%';
 window.sample = () => {
   const c = document.getElementById('c'), x = c.getContext('2d', { willReadFrequently: true });
   x.drawImage(document.getElementById(window.VIEW), 0, 0, 160, 90);
-  const d = x.getImageData(0, 0, 160, 90).data; let sat = 0, green = 0, diff = 0;
+  const d = x.getImageData(0, 0, 160, 90).data; let sat = 0, green = 0, diff = 0, edgeGreen = 0;
   for (let i = 0; i < d.length; i += 4) {
     const r = d[i], g = d[i+1], b = d[i+2];
+    const px = (i / 4) % 160, py = Math.floor(i / 4 / 160);
+    const outside = ((px - 80) / 35) ** 2 + ((py - 49.5) / 45) ** 2 > 1.15;
+    if (outside && Math.abs(r - 95) < 30 && Math.abs(g - 159) < 30 && Math.abs(b - 90) < 30) edgeGreen++;
     sat += Math.max(r, g, b) - Math.min(r, g, b);
     if (Math.abs(r - 95) < 30 && Math.abs(g - 159) < 30 && Math.abs(b - 90) < 30) green++;
     if (prev) diff += Math.abs(r - prev[i]) + Math.abs(g - prev[i+1]) + Math.abs(b - prev[i+2]);
   }
   prev = d; const n = d.length / 4;
-  return { sat: +(sat / n).toFixed(1), green: +(green / n).toFixed(3), diff: +(diff / n / 3).toFixed(2), img: c.toDataURL('image/jpeg', 0.7) };
+  return { sat: +(sat / n).toFixed(1), green: +(green / n).toFixed(3), edgeGreen: +(edgeGreen / n).toFixed(3), diff: +(diff / n / 3).toFixed(2), img: c.toDataURL('image/jpeg', 0.7) };
 };
 </script>""".replace('%MODE%', MODE).replace('%VIEW%', VIEW)
 
@@ -103,6 +120,7 @@ async def main():
             shots.extend([series[len(series) * k // 4]['img'] for k in range(4)])
             res[label] = {'base_sat': base['sat'], 'min_sat': min(s['sat'] for s in series),
                           'max_green': max(s['green'] for s in series),
+                          'max_edge_green': max(s['edgeGreen'] for s in series),
                           'diffs': [s['diff'] for s in series]}
             await page.wait_for_timeout(1500)
         if TAG == 'photo':  # capture an empty background first (the "person" stays: fine for timing)

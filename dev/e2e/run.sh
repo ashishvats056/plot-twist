@@ -7,6 +7,8 @@
 #   pipe   — the page runs its own effects pipeline in passthrough (like Meet
 #            with no background set), self view shows the camera
 #   effect — the page sends its own processed track (like a Meet background)
+#   replace — like effect, but the processed track replaces the background
+#            around the person (Meet background picture): overlays must survive it
 # Needs: python3 + playwright (pip install playwright; playwright install chromium), ffmpeg.
 # Usage: sh dev/e2e/run.sh [extension-dir]   (default: this repo)
 set -eu
@@ -25,7 +27,7 @@ fi
 cp "$here/regress.py" "$here/summary.py" "$out/"
 cd "$out"
 status=0
-for cfg in "plain self" "plain remote" "pipe self" "pipe remote" "effect self" "effect remote"; do
+for cfg in "plain self" "plain remote" "pipe self" "pipe remote" "effect self" "effect remote" "replace self" "replace remote"; do
   set -- $cfg
   rm -rf profile-*
   line=$(python3 regress.py "$ext" t "$1" "$2" 2>&1 | python3 summary.py "$1") || true

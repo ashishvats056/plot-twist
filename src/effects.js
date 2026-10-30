@@ -1,4 +1,8 @@
 // Draws the outgoing video: live frame (via PlotTwistVanish) + cinema, facepalm, money rain.
+// Everything is drawn on the camera frame (draw). When Google Meet sends a
+// processed copy of it instead (background blur/replacement), redrawOverlays
+// paints the same overlays on Meet's frame too, because Meet's background
+// replacement cuts out anything outside you.
 (function (root) {
   'use strict';
 
@@ -209,6 +213,19 @@
       cinema(now) { s.cinemaAt = now; },
       facepalm(now) { s.facepalmAt = now; },
       money(now) { s.moneyAt = now; spawnNotes(); },
+      // Whether any overlay (not the vanish) is on screen right now.
+      overlaysActive(now) {
+        return now - s.cinemaAt <= CINEMA_MS || now - s.facepalmAt <= facepalmDuration(facepalmMedia)
+          || now - s.moneyAt <= MONEY_MS;
+      },
+      // Meet's processed frame: draw the overlays again on top of it.
+      redrawOverlays(ctx, source, sw, sh, now) {
+        w = sw; h = sh;
+        ctx.drawImage(source, 0, 0, sw, sh);
+        drawCinema(ctx, now);
+        drawFacepalm(ctx, now);
+        drawMoney(ctx, now);
+      },
       draw(ctx, source, sw, sh, now, debug) {
         w = sw; h = sh;
         vanish.draw(ctx, source, sw, sh, now);

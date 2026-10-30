@@ -239,6 +239,7 @@
     let live = 1;
     const release = () => { live -= 1; if (live <= 0) real.stop(); };
     const patch = (t) => {
+      ownTracks.add(t);
       const stop = t.stop.bind(t);
       const clone = t.clone.bind(t);
       Object.defineProperty(t, 'label', { get: () => real.label, configurable: true });
@@ -301,6 +302,122 @@
     clearBackground();
     log('background photo cleared (camera stopped)');
   }
+
+  // ---- Overlays on Meet's processed video ---------------------------------
+  // Meet's background replacement keeps only you from our camera frame, so
+  // money, cinema and facepalm drawn there get cut out. When Meet sends a
+  // video track of its own, wrap it and draw those overlays again on top.
+  // The camera stage is left exactly as it is (dust, vanish and overlays all
+  // still drawn there), so nothing depends on this hook working.
+  const ownTracks = new WeakSet(); // our camera tracks and their clones
+  const overlaid = new WeakMap(); // Meet's track → our overlay track
+  const meetTrackOf = new WeakMap(); // our overlay track → Meet's track
+  const hasBreakoutBox = typeof MediaStreamTrackProcessor === 'function'
+    && typeof MediaStreamTrackGenerator === 'function';
+
+  function wantsOverlayStage(track) {
+    if (!hasBreakoutBox || !track || track.kind !== 'video' || track.readyState !== 'live') return false;
+    if (ownTracks.has(track) || meetTrackOf.has(track)) return false;
+    try { if ('displaySurface' in track.getSettings()) return false; } catch { /* not a screen share */ }
+    return true;
+  }
+
+  function overlayStage(track) {
+    if (!wantsOverlayStage(track)) return track;
+    const known = overlaid.get(track);
+    if (known && known.readyState === 'live') return known;
+    const processor = new MediaStreamTrackProcessor({ track });
+    const generator = new MediaStreamTrackGenerator({ kind: 'video' });
+    const out = new OffscreenCanvas(2, 2);
+    const ctx = out.getContext('2d');
+    const transformer = new TransformStream({
+      transform(frame, controller) {
+        const now = performance.now();
+        if (!state.settings.enabled || !renderer.overlaysActive(now)) { controller.enqueue(frame); return; }
+        try {
+          const w = frame.displayWidth;
+          const h = frame.displayHeight;
+          if (out.width !== w || out.height !== h) { out.width = w; out.height = h; }
+          renderer.redrawOverlays(ctx, frame, w, h, now);
+          controller.enqueue(new VideoFrame(out, { timestamp: frame.timestamp, alpha: 'discard' }));
+          frame.close();
+        } catch (err) {
+          log(`overlay frame error: ${err.message}`);
+          controller.enqueue(frame);
+        }
+      },
+    });
+    processor.readable.pipeThrough(transformer).pipeTo(generator.writable).catch(() => {});
+    Object.defineProperty(generator, 'label', { get: () => track.label, configurable: true });
+    generator.getSettings = () => track.getSettings();
+    generator.getConstraints = () => track.getConstraints();
+    generator.applyConstraints = (c) => track.applyConstraints(c);
+    overlaid.set(track, generator);
+    meetTrackOf.set(generator, track);
+    log('overlay stage on Meet video');
+    return generator;
+  }
+
+  // Every way a track reaches the network. sender.track reads back Meet's own
+  // track, so Meet's bookkeeping is unchanged.
+  (function hookSenders() {
+    const Sender = window.RTCRtpSender;
+    const PC = window.RTCPeerConnection;
+    if (!Sender || !PC || !hasBreakoutBox) return;
+    const { replaceTrack } = Sender.prototype;
+    Sender.prototype.replaceTrack = function (track) {
+      return replaceTrack.call(this, track ? overlayStage(track) : track);
+    };
+    const trackDesc = Object.getOwnPropertyDescriptor(Sender.prototype, 'track');
+    if (trackDesc && trackDesc.get) {
+      Object.defineProperty(Sender.prototype, 'track', {
+        ...trackDesc,
+        get() { const t = trackDesc.get.call(this); return (t && meetTrackOf.get(t)) || t; },
+      });
+    }
+    const { addTrack, addTransceiver } = PC.prototype;
+    PC.prototype.addTrack = function (track, ...streams) {
+      return addTrack.call(this, overlayStage(track), ...streams);
+    };
+    PC.prototype.addTransceiver = function (trackOrKind, ...rest) {
+      return addTransceiver.call(this, typeof trackOrKind === 'string' ? trackOrKind : overlayStage(trackOrKind), ...rest);
+    };
+  })();
+
+  // Your self view: a page <video> playing Meet's processed track plays our
+  // overlay copy instead, so you see what others see. Only elements in the
+  // page, and only tracks we already wrapped for sending: Meet's effects
+  // library plays your camera in hidden, detached <video>s as its input, and
+  // those must never get overlays (Meet would cut them out or blur them).
+  (function hookSelfView() {
+    const desc = Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype, 'srcObject');
+    if (!desc || !desc.set || !hasBreakoutBox) return;
+    const meant = new WeakMap(); // element → the stream Meet set
+    const swap = (el, stream) => {
+      if (!el.isConnected || !stream || typeof stream.getTracks !== 'function') return stream;
+      const tracks = stream.getTracks();
+      if (!tracks.some((t) => overlaid.has(t))) return stream;
+      return new MediaStream(tracks.map((t) => overlaid.get(t) || t));
+    };
+    Object.defineProperty(HTMLMediaElement.prototype, 'srcObject', {
+      ...desc,
+      get() { return meant.has(this) ? meant.get(this) : desc.get.call(this); },
+      set(stream) {
+        const next = swap(this, stream);
+        if (next === stream) meant.delete(this); else meant.set(this, stream);
+        desc.set.call(this, next);
+      },
+    });
+    // Elements whose stream was set before its track was wrapped for sending.
+    setInterval(() => {
+      for (const v of document.getElementsByTagName('video')) {
+        if (meant.has(v)) continue;
+        const current = desc.get.call(v);
+        const next = swap(v, current);
+        if (next !== current) { meant.set(v, current); desc.set.call(v, next); }
+      }
+    }, POLL_MS);
+  })();
 
   function wrapVideoTrack(track) {
     state.cameras += 1;
