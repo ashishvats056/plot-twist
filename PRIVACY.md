@@ -24,7 +24,7 @@ All processing happens in memory, in your browser, on your device.
   a second copy of your microphone, listens for the click of a finger snap, and
   throws each audio block away right after analysing it. With the box unticked,
   Plot Twist doesn't touch your microphone.
-- **Empty-room photo** (only if you click "Capture empty room"). One frame is
+- **Empty background photo** (only if you click "Capture empty background"). One frame is
   kept in memory for that tab. It is deleted when your camera stops, when you
   reload or leave the page, or when you click ✕. It is never written to disk.
 

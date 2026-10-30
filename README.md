@@ -24,12 +24,12 @@ If **Load unpacked** is greyed out, your Chrome is managed by your organisation 
 
 ## Using it
 
-Click the **Plot Twist** icon in Chrome's toolbar while you're in a Meet call (pin it from the puzzle-piece menu). The popup has the effect buttons, the room photo, the auto-detect settings and a master **Effects** switch. It talks only to the active tab, so open it from the Meet tab.
+Click the **Plot Twist** icon in Chrome's toolbar while you're in a Meet call (pin it from the puzzle-piece menu). The popup has the effect buttons, the empty background photo, the auto-detect settings and a master **Effects** switch. It talks only to the active tab, so open it from the Meet tab.
 
 - **Effects switch** (saved): when off, Meet gets your camera untouched, and no detector or mic tap is created. Switching it off during a call takes effect immediately (frames pass straight through). Switching it back on applies the next time your camera starts: turn the camera off and on in Meet (the popup tells you).
 
-- **📷 Capture empty room** (recommended before you vanish): click it, step out of frame during the 5-second countdown (you can close the popup; the countdown keeps running in the Meet tab), and it takes one photo of the room without you. After the dust settles, a vanish then fades quickly (about 1 s) into this photo, so no outline or halo of you is left. **Return** fades back to live and re-forms you. The photo is kept in memory for this tab only: it's never saved to disk, and it's deleted when your camera stops, when you leave or reload, or when you click **✕**.
-- **Without a room photo**, a vanish still erases only you and keeps the rest of the frame live. The space where you were is filled with the room as the camera has seen it. Lean left and right once so it can see behind you.
+- **📷 Capture empty background** (recommended before you vanish): click it, step out of frame during the 5-second countdown (you can close the popup; the countdown keeps running in the Meet tab), and it takes one photo of the background without you. After the dust settles, a vanish then fades quickly (about 1 s) into this photo, so no outline or halo of you is left. **Return** fades back to live and re-forms you. The photo is kept in memory for this tab only: it's never saved to disk, and it's deleted when your camera stops, when you leave or reload, or when you click **✕**.
+- **Without an empty background photo**, a vanish still erases only you and keeps the rest of the frame live. The space where you were is filled with the background as the camera has seen it. Lean left and right once so it can see behind you.
 - **Auto-detect** checkboxes are saved with your Chrome profile (`chrome.storage.sync`), so you set them once.
 - **Auto-detect snaps / facepalm** (off by default): turn these on to trigger the effects from gestures instead of buttons. Auto snap detection also opens a second, unprocessed stream of your mic to hear snap clicks; with it off, the extension doesn't touch your mic.
 - **Auto-detect Cinema gesture** (on by default): both hands up, palms showing → Absolute Cinema. Untick it to use only the button.
@@ -70,11 +70,11 @@ mic ───► click detector ────────────────
 ```
 
 - `src/inject.js` runs in Meet's page before Meet loads. It replaces `navigator.mediaDevices.getUserMedia` so Meet receives a processed camera track (`MediaStreamTrackProcessor` → canvas → `MediaStreamTrackGenerator`). This keeps working when the Meet tab is in the background. When auto-detect snaps is on, it also opens a second, raw stream of the same mic to hear snap clicks: Chrome's default noise suppression strips most of a snap's click.
-- `detector/` runs MediaPipe's hand landmarker, face detector and selfie segmenter inside an extension iframe. Meet's own security policy would block MediaPipe's wasm runtime if it ran in the page. The person mask is hard-edged and slightly enlarged, so none of you leaks into the saved room image.
+- `detector/` runs MediaPipe's hand landmarker, face detector and selfie segmenter inside an extension iframe. Meet's own security policy would block MediaPipe's wasm runtime if it ran in the page. The person mask is hard-edged and slightly enlarged, so none of you leaks into the saved background image.
 - `src/actions.js` lists the effects the popup offers, which gestures may trigger them automatically, and the settings. `popup/` is the toolbar popup.
 - `src/bridge.js` (isolated world) connects the popup and `chrome.storage` to `src/inject.js`. Chrome extension APIs aren't available in Meet's page world, so it relays over `src/channel.js`: DOM events on names that include a random per-page token, handed over before Meet's scripts run. Chrome injects a file into only one world, so the bridge loads copies of the shared modules from `src/isolated/` (regenerate them with `node dev/tools/build-isolated.js`; a test fails if they're stale).
 - `src/gestures.js` turns landmarks and mic clicks into events (`snap`, `doubleSnap`, `cinema`, `facepalm`). It's pure logic and covered by unit tests.
-- `src/background.js` builds the empty-room image. `src/vanish.js` erases the person and runs the dust, which affects only the person. `src/effects.js` draws the cinema, facepalm and money effects.
+- `src/background.js` builds the empty-background image. `src/vanish.js` erases the person and runs the dust, which affects only the person. `src/effects.js` draws the cinema, facepalm and money effects.
 
 Nothing leaves your machine. All detection runs locally. The extension runs only on `meet.google.com` and asks for one permission, `storage`, to remember your settings.
 

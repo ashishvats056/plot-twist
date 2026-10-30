@@ -57,7 +57,7 @@ input[role="switch"]:checked::after { transform: translateX(16px); }
 .action .label { font-size: 12.5px; font-weight: 600; }
 .action:disabled, .row-btn:disabled { opacity: 0.45; cursor: default; }
 
-.room { display: flex; gap: 8px; align-items: stretch; }
+.bg-photo { display: flex; gap: 8px; align-items: stretch; }
 .row-btn { flex: 1; display: flex; align-items: center; gap: 8px; padding: 10px 12px; border: 0;
   border-radius: 12px; background: var(--tile); cursor: pointer; text-align: left; font-weight: 600; font-size: 12.5px; }
 .row-btn:hover:not(:disabled) { background: var(--tile-hover); }

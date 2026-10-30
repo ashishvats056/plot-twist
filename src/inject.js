@@ -20,7 +20,7 @@
   const DETECT_WIDTH = 640; // larger input finds small, fast snapping hands more often
   const DETECT_TIMEOUT_MS = 2000;
   const SEGMENT_EVERY_MS = 120; // how often the person mask refreshes the background
-  const WARMUP_MS = 1000; // cameras send black/dim frames at first: don't learn the room from them
+  const WARMUP_MS = 1000; // cameras send black/dim frames at first: don't learn the background from them
   const MIN_LUMA = 12; // frames darker than this (0–255 average) aren't learned either
   const TICK_MS = 100;
   const POLL_MS = 1000;
@@ -47,8 +47,8 @@
     cameras: 0, // live processed camera tracks
     rawCameras: [], // camera tracks passed through untouched because effects were off
     detectorOrigin: null, // told by the bridge; frames from any other origin are ignored
-    countdown: 0, // seconds left before the room photo is taken
-    thumb: null, // small JPEG data URL of the room photo, for the popup
+    countdown: 0, // seconds left before the empty background photo is taken
+    thumb: null, // small JPEG data URL of the empty background photo, for the popup
     micTrack: null, // Meet's mic track, tapped for snap clicks only when autoSnap is on
     wantPhoto: false,
     debug: false,
@@ -187,7 +187,7 @@
     const detCtx = det.getContext('2d');
     // The exact frame a person mask was computed from. The mask arrives a few
     // frames later; applying it to the newest frame instead would let a moving
-    // person leak into the saved room image.
+    // person leak into the saved background image.
     const segFrame = new OffscreenCanvas(2, 2);
     const segCtx = segFrame.getContext('2d');
     const probe = new OffscreenCanvas(16, 9).getContext('2d', { willReadFrequently: true });
@@ -215,9 +215,9 @@
         state.pendingMask = null;
       }
       if (state.wantPhoto) {
-        renderer.setRoomPhoto(source, w, h);
+        renderer.setBgPhoto(source, w, h);
         state.wantPhoto = false;
-        log('room photo captured');
+        log('background photo captured');
         makeThumb();
       }
       if (state.wantVanish) {
@@ -294,12 +294,12 @@
     return disguise(fake, track);
   }
 
-  // The room photo is for this call only: forget it once no camera is running.
+  // The empty background photo is for this call only: forget it once no camera is running.
   function cameraStopped() {
     state.cameras = Math.max(0, state.cameras - 1);
-    if (state.cameras || !renderer.roomPhoto) return;
-    clearRoom();
-    log('room photo cleared (camera stopped)');
+    if (state.cameras || !renderer.bgPhoto) return;
+    clearBackground();
+    log('background photo cleared (camera stopped)');
   }
 
   function wrapVideoTrack(track) {
@@ -425,19 +425,19 @@
     if (key in A.DEFAULT_SETTINGS) applySettings({ ...state.settings, [key]: !!value });
   }
 
-  function clearRoom() {
-    renderer.clearRoomPhoto();
+  function clearBackground() {
+    renderer.clearBgPhoto();
     state.thumb = null;
   }
 
   function makeThumb() {
-    const photo = renderer.roomPhoto;
+    const photo = renderer.bgPhoto;
     if (!photo) return;
     const c = new OffscreenCanvas(THUMB_W, THUMB_H);
     c.getContext('2d').drawImage(photo, 0, 0, THUMB_W, THUMB_H);
     c.convertToBlob({ type: 'image/jpeg', quality: 0.75 }).then((blob) => {
       const reader = new FileReader();
-      reader.onload = () => { if (renderer.roomPhoto === photo) state.thumb = reader.result; };
+      reader.onload = () => { if (renderer.bgPhoto === photo) state.thumb = reader.result; };
       reader.readAsDataURL(blob);
     }).catch(() => {});
   }
@@ -445,7 +445,7 @@
   // The countdown runs here, not in the popup: the popup closes as soon as it
   // loses focus, which must not cancel the capture.
   let countdownTimer = null;
-  function captureRoom() {
+  function captureBackground() {
     if (countdownTimer || !state.cameras || !state.settings.enabled) return;
     state.countdown = CAPTURE_COUNTDOWN_S;
     countdownTimer = setInterval(() => {
@@ -464,7 +464,7 @@
       needsRestart: state.settings.enabled && state.cameras === 0
         && state.rawCameras.some((t) => t.readyState === 'live'),
       countdown: state.countdown,
-      hasRoomPhoto: !!renderer.roomPhoto,
+      hasBackgroundPhoto: !!renderer.bgPhoto,
       thumb: state.thumb,
       settings: state.settings,
     };
@@ -493,8 +493,8 @@
       case 'trigger':
         if (A.TRIGGERS.includes(msg.event)) trigger(msg.event);
         break;
-      case 'captureRoom': captureRoom(); break;
-      case 'clearRoom': clearRoom(); log('room photo cleared'); break;
+      case 'captureBackground': captureBackground(); break;
+      case 'clearBackground': clearBackground(); log('background photo cleared'); break;
       default: break;
     }
   });
@@ -529,9 +529,9 @@
     get settings() { return state.settings; },
     setSetting,
     get hasCamera() { return controller.hasCamera; },
-    get roomPhoto() { return renderer.roomPhoto; },
-    captureRoom,
-    clearRoom,
+    get bgPhoto() { return renderer.bgPhoto; },
+    captureBackground,
+    clearBackground,
     get mode() { return renderer.mode; },
     get log() { return state.log; },
     get audio() { return state.audio; },

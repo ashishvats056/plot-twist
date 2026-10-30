@@ -40,8 +40,8 @@
 <button onclick="harness.trigger('doubleSnap')">Money rain</button>
 <button onclick="harness.trigger('cinema')">Cinema</button>
 <button onclick="harness.trigger('facepalm')">Facepalm</button>
-<button onclick="harness.captureRoom()">Capture empty room (5 s)</button>
-<button onclick="harness.clearRoom()">Delete room photo</button>
+<button onclick="harness.captureBackground()">Capture empty background (5 s)</button>
+<button onclick="harness.clearBackground()">Delete background photo</button>
 <div id="toggles"></div>
 <span>Alt+Shift+D toggles the landmark overlay.</span>
 <video id="out" autoplay muted playsinline></video>
@@ -61,7 +61,7 @@
   setInterval(() => {
     const s = harness.state || {};
     const fx = window.__plottwist;
-    document.getElementById('log').textContent = `mode: ${s.mode}  camera: ${s.hasCamera}  countdown: ${s.countdown}  photo: ${s.hasRoomPhoto}\n`
+    document.getElementById('log').textContent = `mode: ${s.mode}  camera: ${s.hasCamera}  countdown: ${s.countdown}  photo: ${s.hasBackgroundPhoto}\n`
       + (fx ? fx.log.slice().reverse().join('\n') : '');
   }, 250);
 </script>

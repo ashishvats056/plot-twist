@@ -57,8 +57,8 @@
     if (sender.id !== chrome.runtime.id || sender.tab || !msg || typeof msg !== 'object') return false;
     if (msg.type === 'getState') reply({ ok: true, state });
     else if (msg.type === 'trigger' && A.TRIGGERS.includes(msg.event)) channel.post({ type: 'trigger', event: msg.event });
-    else if (msg.type === 'captureRoom') channel.post({ type: 'captureRoom' });
-    else if (msg.type === 'clearRoom') channel.post({ type: 'clearRoom' });
+    else if (msg.type === 'captureBackground') channel.post({ type: 'captureBackground' });
+    else if (msg.type === 'clearBackground') channel.post({ type: 'clearBackground' });
     else return false;
     if (msg.type !== 'getState') reply({ ok: true });
     return false;

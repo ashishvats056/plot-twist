@@ -59,7 +59,7 @@
       hasCamera: !!raw.hasCamera,
       needsRestart: !!raw.needsRestart,
       countdown: countdown > 0 && countdown <= MAX_COUNTDOWN_S ? countdown : 0,
-      hasRoomPhoto: !!raw.hasRoomPhoto,
+      hasBackgroundPhoto: !!raw.hasBackgroundPhoto,
       thumb,
       settings: sanitizeSettings(raw.settings),
     };

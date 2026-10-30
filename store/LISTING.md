@@ -16,14 +16,14 @@ Plot Twist adds visual effects to the camera video you send in Google Meet calls
 Drop a plot twist into your next Google Meet call.
 
 Click the Plot Twist icon in the toolbar during a call, then:
-• Vanish: you dissolve into dust and disappear, while the room behind you stays live. Click Return to re-form.
+• Vanish: you dissolve into dust and disappear, while your background stays live. Click Return to re-form.
 • Money rain: banknotes fall across your video.
 • Absolute Cinema: your video turns black-and-white with a dramatic title. You can also trigger it by raising both hands.
 • Facepalm: a reaction overlay for those moments.
 
 Everyone in the call sees the effects. Only you see the controls.
 
-Tip: capture a photo of the empty room first. Step out of frame during the 5-second countdown, and your vanish will then fade cleanly into that photo.
+Tip: capture a photo of your empty background first. Step out of frame during the 5-second countdown, and your vanish will then fade cleanly into that photo.
 
 Optional gesture control: turn on auto-detect for finger snaps (vanish/return; uses your microphone to hear the snap), facepalm and the Cinema gesture.
 

@@ -1,14 +1,14 @@
-// Builds an "empty room" image while you sit in front of the camera: every
+// Builds an "empty background" image while you sit in front of the camera: every
 // frame with the person cut out (via the segmentation mask) is layered onto an
-// accumulator, and pixels never seen are filled row by row from the room on
+// accumulator, and pixels never seen are filled row by row from the background on
 // either side (walls and furniture mostly run horizontally).
 (function (root) {
   'use strict';
 
   const FILL_WIDTH = 320; // hole filling runs on a small copy, then is scaled up
   const SMOOTH_DIVISOR = 256; // fill is softened by width / 256 px to hide streaks
-  const KNOWN_ALPHA = 128; // a pixel with at least this alpha counts as seen room
-  const FADE_PER_SEC = 0.01; // room pixels not seen again fade below KNOWN_ALPHA in ~70 s
+  const KNOWN_ALPHA = 128; // a pixel with at least this alpha counts as seen background
+  const FADE_PER_SEC = 0.01; // background pixels not seen again fade below KNOWN_ALPHA in ~70 s
   const FADE_STEP = 0.02; // canvas alpha is 8-bit: apply fades in steps big enough to register
   const MASK_STAMPS = 2; // keeps the feathered edge opaque on the inside
   const FEATHER_DIVISOR = 200; // soft edge of width / 200 px (the detector already grew the mask)
@@ -125,7 +125,7 @@
       c.globalCompositeOperation = 'source-over';
     }
 
-    // Fade the whole saved room a little; whatever is visible now is redrawn at
+    // Fade the whole saved background a little; whatever is visible now is redrawn at
     // full strength right after, so only pixels not seen for a while fade out.
     function fadeStale(now) {
       const dt = lastUpdateAt === null ? 0 : Math.min(1, (now - lastUpdateAt) / 1000);
@@ -140,7 +140,7 @@
       c.globalCompositeOperation = 'source-over';
     }
 
-    // Paint the row-filled small copy behind the sharp accumulator, so seen room
+    // Paint the row-filled small copy behind the sharp accumulator, so seen background
     // stays sharp and only never-seen pixels come from the fill.
     function fillHoles() {
       const { width: fw, height: fh } = small.canvas;

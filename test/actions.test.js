@@ -41,11 +41,11 @@ test('the master switch does not count as a gesture setting', () => {
 test('popup state from the page is sanitized before use', () => {
   assert.deepEqual(A.sanitizeState(null), null);
   const s = A.sanitizeState({
-    mode: 'vanished', hasCamera: 1, needsRestart: 0, countdown: 3.7, hasRoomPhoto: true,
+    mode: 'vanished', hasCamera: 1, needsRestart: 0, countdown: 3.7, hasBackgroundPhoto: true,
     thumb: 'data:image/jpeg;base64,AAAA', settings: { autoSnap: true }, extra: 'x',
   });
   assert.deepEqual(s, {
-    mode: 'vanished', hasCamera: true, needsRestart: false, countdown: 4, hasRoomPhoto: true,
+    mode: 'vanished', hasCamera: true, needsRestart: false, countdown: 4, hasBackgroundPhoto: true,
     thumb: 'data:image/jpeg;base64,AAAA', settings: { ...A.DEFAULT_SETTINGS, autoSnap: true },
   });
   const bad = A.sanitizeState({ mode: '<img>', countdown: 1e9, thumb: 'javascript:alert(1)' });
@@ -106,13 +106,13 @@ test('every action has a unique id, an icon and a label', () => {
   for (const a of actions) assert.ok(a.icon && a.label());
 });
 
-test('the fade into the room photo is quick (owner feedback), the dust timing is unchanged', () => {
+test('the fade into the empty background photo is quick (owner feedback), the dust timing is unchanged', () => {
   const { PHOTO_FADE_MS, DUST_MS } = globalThis.PlotTwistVanish;
   assert.equal(PHOTO_FADE_MS, 1200);
   assert.equal(DUST_MS, 2200);
 });
 
-test('the room photo fades in smoothly after the dust settles', () => {
+test('the empty background photo fades in smoothly after the dust settles', () => {
   assert.equal(photoBlend(0, 4000), 0);
   assert.equal(photoBlend(4000, 4000), 1);
   assert.equal(photoBlend(9000, 4000), 1);

@@ -1,6 +1,6 @@
 // Toolbar popup. Settings are written straight to chrome.storage.sync (the Meet
-// tab picks them up through storage.onChanged). Effect buttons and the room
-// capture are sent to the active tab's bridge; state is polled from it while
+// tab picks them up through storage.onChanged). Effect buttons and the empty
+// background capture are sent to the active tab's bridge; state is polled from it while
 // the popup is open. The popup needs no "tabs" permission: it messages the
 // active tab, and only a Meet tab (with our content script) answers.
 (function () {
@@ -63,8 +63,8 @@
     render();
   }
   $('enabled').addEventListener('change', (e) => save('enabled', e.target.checked));
-  $('capture').addEventListener('click', () => send({ type: 'captureRoom' }).then(refresh));
-  $('clear').addEventListener('click', () => send({ type: 'clearRoom' }).then(refresh));
+  $('capture').addEventListener('click', () => send({ type: 'captureBackground' }).then(refresh));
+  $('clear').addEventListener('click', () => send({ type: 'clearBackground' }).then(refresh));
 
   function statusText() {
     if (!state) return 'Open a Meet call with your camera on.';
@@ -72,8 +72,8 @@
     if (state.needsRestart) return 'Turn your camera off and on again to start effects.';
     if (!state.hasCamera) return 'Open a Meet call with your camera on.';
     if (state.countdown) return `Step out of frame… ${state.countdown}`;
-    if (state.hasRoomPhoto) return 'Vanish will fade into your room photo.';
-    return 'Tip: capture the empty room for a cleaner vanish.';
+    if (state.hasBackgroundPhoto) return 'Vanish will fade into your empty background photo.';
+    return 'Tip: capture an empty background for a cleaner vanish.';
   }
 
   function render() {
@@ -93,9 +93,9 @@
     const counting = !!(state && state.countdown);
     $('capture').disabled = !live || counting;
     $('capture-label').textContent = counting ? `Step out of frame… ${state.countdown}`
-      : `${state && state.hasRoomPhoto ? 'Retake' : 'Capture'} empty room`;
-    const thumb = state && state.hasRoomPhoto && state.thumb;
-    $('thumb-wrap').hidden = !(state && state.hasRoomPhoto);
+      : `${state && state.hasBackgroundPhoto ? 'Retake' : 'Capture'} empty background`;
+    const thumb = state && state.hasBackgroundPhoto && state.thumb;
+    $('thumb-wrap').hidden = !(state && state.hasBackgroundPhoto);
     if (thumb && $('thumb').getAttribute('src') !== thumb) $('thumb').src = thumb;
     $('status').textContent = statusText();
   }

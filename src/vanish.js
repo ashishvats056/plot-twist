@@ -1,6 +1,6 @@
 // Vanish: only the person turns to dust and disappears; the rest of the
-// frame stays live. While vanished, the person's area is painted with the room
-// behind them (from PlotTwistBackground). If a photo of the empty room was taken,
+// frame stays live. While vanished, the person's area is painted with the background
+// behind them (from PlotTwistBackground). If a photo of the empty background was taken,
 // the whole frame then fades quickly into it, so no outline or halo remains.
 (function (root) {
   'use strict';
@@ -10,13 +10,13 @@
   const TILE_DIVISOR = 110; // tile size = width / 110
   const TILE_MIN_ALPHA = 40; // a tile is "person" if its mask alpha is above this (0–255)
   const SOFT_EDGE_DIVISOR = 90; // the filled-in patch fades out over width / 90 px
-  const PHOTO_FADE_MS = 1200; // after the dust settles, fade into the room photo over this
+  const PHOTO_FADE_MS = 1200; // after the dust settles, fade into the empty background photo over this
   const PHOTO_RETURN_MS = 500; // on return, fade the photo back out over this
 
   const rand = (a, b) => a + Math.random() * (b - a);
   const clamp01 = (x) => Math.max(0, Math.min(1, x));
 
-  // How much of the room photo shows, ms after the dust settled: smoothstep, so
+  // How much of the empty background photo shows, ms after the dust settled: smoothstep, so
   // the change starts and ends imperceptibly.
   function photoBlend(ms, fadeMs) {
     const k = clamp01(ms / fadeMs);
@@ -29,14 +29,14 @@
     let w = 0;
     let h = 0;
     let personMask = null; // grown mask of the latest segmentation
-    let softMask = null; // same, with a soft edge, for blending the filled-in room
+    let softMask = null; // same, with a soft edge, for blending the filled-in background
     let hasMask = false;
-    let room = null; // background, clipped to the person's area
+    let patch = null; // background, clipped to the person's area
     let person = null; // person-only cutout that turns to dust
     let tiles = [];
     let mode = 'visible';
     let modeAt = 0;
-    let photo = null; // empty-room photo for this call, held in memory only
+    let photo = null; // empty background photo for this call, held in memory only
     let photoAtReturn = 0; // how much photo was showing when Return was pressed
 
     function resize(nw, nh) {
@@ -44,7 +44,7 @@
       w = nw; h = nh;
       personMask = B.makeCanvas(w, h);
       softMask = B.makeCanvas(w, h);
-      room = B.makeCanvas(w, h);
+      patch = B.makeCanvas(w, h);
       person = B.makeCanvas(w, h);
       hasMask = false;
     }
@@ -84,11 +84,11 @@
       return out;
     }
 
-    function drawEmptyRoom(ctx, source) {
+    function drawEmptyBackground(ctx, source) {
       ctx.drawImage(source, 0, 0, w, h);
       if (!hasMask || !background.ready) return;
-      clipToPerson(room, background.canvas, softMask);
-      ctx.drawImage(room.canvas, 0, 0);
+      clipToPerson(patch, background.canvas, softMask);
+      ctx.drawImage(patch.canvas, 0, 0);
     }
 
     function photoAlpha(now) {
@@ -126,17 +126,17 @@
 
     return {
       get mode() { return mode; },
-      get roomPhoto() { return photo && photo.canvas; },
-      setRoomPhoto(source, sw, sh) {
+      get bgPhoto() { return photo && photo.canvas; },
+      setBgPhoto(source, sw, sh) {
         resize(sw, sh);
         photo = B.makeCanvas(w, h);
         photo.ctx.drawImage(source, 0, 0, w, h);
       },
-      clearRoomPhoto() { photo = null; },
-      debugCanvases: () => ({ room: background.canvas, mask: personMask && personMask.canvas, soft: softMask && softMask.canvas, ...background.debug }),
+      clearBgPhoto() { photo = null; },
+      debugCanvases: () => ({ background: background.canvas, mask: personMask && personMask.canvas, soft: softMask && softMask.canvas, ...background.debug }),
       // Called whenever a fresh segmentation mask arrives, with the frame it was
       // computed from. learn=false: use it to erase the person, but don't save the
-      // frame into the room image (camera warm-up, very dark frames).
+      // frame into the background image (camera warm-up, very dark frames).
       setMask(source, mask, sw, sh, learn = true, hands = []) {
         resize(sw, sh);
         B.dilateMask(personMask, mask, w, h, hands);
@@ -168,7 +168,7 @@
         if (mode === 'vanishing' && elapsed >= DUST_MS) mode = 'vanished';
         if (mode === 'reappearing' && elapsed >= DUST_MS) mode = 'visible';
         if (mode === 'visible') { ctx.drawImage(source, 0, 0, w, h); return; }
-        drawEmptyRoom(ctx, source);
+        drawEmptyBackground(ctx, source);
         drawPhoto(ctx, photoAlpha(now));
         if (mode === 'vanishing') drawDust(ctx, elapsed / 1000);
         if (mode === 'reappearing') {

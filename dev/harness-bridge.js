@@ -24,7 +24,7 @@
       channel.post({ type: 'settings', settings });
     },
     trigger: (event) => channel.post({ type: 'trigger', event }),
-    captureRoom: () => channel.post({ type: 'captureRoom' }),
-    clearRoom: () => channel.post({ type: 'clearRoom' }),
+    captureBackground: () => channel.post({ type: 'captureBackground' }),
+    clearBackground: () => channel.post({ type: 'clearBackground' }),
   };
 })();
