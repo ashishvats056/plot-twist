@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Plot Twist",
-  "version": "0.2.0",
+  "version": "1.0.0",
   "description": "Drop a plot twist into your Google Meet video: dissolve into dust and vanish, make it rain money, go full cinema, facepalm.",
   "icons": {
     "16": "icons/icon-16.png",
