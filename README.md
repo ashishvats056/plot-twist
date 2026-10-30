@@ -5,7 +5,7 @@
 | Trigger | Effect |
 |---|---|
 | Raise both hands, palms showing (automatic, can be switched off) | Black-and-white **ABSOLUTE CINEMA** |
-| **🫰 Vanish** button | You turn to dust and vanish (Thanos snap) |
+| **🫰 Vanish** button | You dissolve into dust and vanish |
 | **🫰 Return** button | You reassemble |
 | **💸 Money rain** button | Money rains down |
 | **🤦 Facepalm** button | Facepalm overlay |
@@ -108,4 +108,12 @@ On Meet the extension exposes nothing to the page. For debugging, use the local 
 node dev/tools/replay-recording.js "$PWD/src/gestures.js" dev/recordings/<file>.json [-v]
 ```
 
-Bundled: MediaPipe Tasks Vision 0.10.35 (Apache-2.0, `vendor/`), and the hand landmarker, BlazeFace short-range and selfie segmenter models (`models/`).
+## Publishing
+
+```bash
+sh dev/tools/package.sh   # checks, runs the tests, writes dist/plot-twist-<version>.zip
+```
+
+The zip contains only the runtime files, the licences and the notices. It never includes `dev/`, `test/`, `tmp/`, `store/`, `HANDOFF.md` or `assets/facepalm.gif`. The store listing draft is in `store/LISTING.md`, and the privacy policy is in `PRIVACY.md`.
+
+Bundled: MediaPipe Tasks Vision 0.10.35 (`vendor/`), plus the hand landmarker, BlazeFace short-range and selfie segmenter models (`models/`). All are Apache-2.0; see `THIRD_PARTY_NOTICES.md` and `LICENSE-APACHE-2.0.txt`.

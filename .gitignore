@@ -7,3 +7,4 @@ node_modules/
 *.zip
 # Facepalm overlay: a copyrighted film clip, kept local only (not for the public repo or store zip)
 assets/facepalm.gif
+dist/

@@ -1,4 +1,4 @@
-// Thanos snap: only the person turns to dust and disappears; the rest of the
+// Vanish: only the person turns to dust and disappears; the rest of the
 // frame stays live. While vanished, the person's area is painted with the room
 // behind them (from PlotTwistBackground). If a photo of the empty room was taken,
 // the whole frame then fades quickly into it, so no outline or halo remains.
