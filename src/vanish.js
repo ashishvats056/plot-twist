@@ -1,7 +1,7 @@
 // Thanos snap: only the person turns to dust and disappears; the rest of the
 // frame stays live. While vanished, the person's area is painted with the room
 // behind them (from PlotTwistBackground). If a photo of the empty room was taken,
-// the whole frame then fades slowly into it, so no outline or halo remains.
+// the whole frame then fades quickly into it, so no outline or halo remains.
 (function (root) {
   'use strict';
 
@@ -10,7 +10,7 @@
   const TILE_DIVISOR = 110; // tile size = width / 110
   const TILE_MIN_ALPHA = 40; // a tile is "person" if its mask alpha is above this (0–255)
   const SOFT_EDGE_DIVISOR = 90; // the filled-in patch fades out over width / 90 px
-  const PHOTO_FADE_MS = 4000; // after the dust settles, fade into the room photo over this
+  const PHOTO_FADE_MS = 1200; // after the dust settles, fade into the room photo over this
   const PHOTO_RETURN_MS = 500; // on return, fade the photo back out over this
 
   const rand = (a, b) => a + Math.random() * (b - a);
@@ -179,5 +179,5 @@
     };
   }
 
-  root.PlotTwistVanish = { createVanish, photoBlend };
+  root.PlotTwistVanish = { createVanish, photoBlend, DUST_MS, PHOTO_FADE_MS };
 })(globalThis);

@@ -58,7 +58,13 @@ test('every action has a unique id, an icon and a label', () => {
   for (const a of actions) assert.ok(a.icon && a.label());
 });
 
-test('the room photo fades in slowly and smoothly after the dust settles', () => {
+test('the fade into the room photo is quick (owner feedback), the dust timing is unchanged', () => {
+  const { PHOTO_FADE_MS, DUST_MS } = globalThis.PlotTwistVanish;
+  assert.equal(PHOTO_FADE_MS, 1200);
+  assert.equal(DUST_MS, 2200);
+});
+
+test('the room photo fades in smoothly after the dust settles', () => {
   assert.equal(photoBlend(0, 4000), 0);
   assert.equal(photoBlend(4000, 4000), 1);
   assert.equal(photoBlend(9000, 4000), 1);
