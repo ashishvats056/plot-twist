@@ -112,7 +112,22 @@ test('the fade into the empty background photo is quick (owner feedback), the du
   assert.equal(DUST_MS, 2200);
 });
 
-test('the empty background photo fades in smoothly after the dust settles', () => {
+test('the empty background photo fades in under the dust: no step when the dust settles', () => {
+  const { photoAlphaAt, DUST_MS, PHOTO_FADE_MS } = globalThis.PlotTwistVanish;
+  assert.equal(photoAlphaAt(0), 0);
+  assert.equal(photoAlphaAt(DUST_MS + PHOTO_FADE_MS), 1, 'fully in 1.2 s after the dust');
+  assert.equal(photoAlphaAt(99999), 1);
+  let prev = 0;
+  for (let t = 0; t <= DUST_MS + PHOTO_FADE_MS + 100; t += 33) { // one ~30 fps frame apart
+    const a = photoAlphaAt(t);
+    assert.ok(a >= prev, `never fades back (t=${t})`);
+    assert.ok(a - prev < 0.025, `no jump between frames (t=${t}: +${(a - prev).toFixed(3)})`);
+    prev = a;
+  }
+  assert.ok(photoAlphaAt(DUST_MS) > 0.6, 'mostly in by the time the dust settles');
+});
+
+test('photoBlend is a smoothstep', () => {
   assert.equal(photoBlend(0, 4000), 0);
   assert.equal(photoBlend(4000, 4000), 1);
   assert.equal(photoBlend(9000, 4000), 1);

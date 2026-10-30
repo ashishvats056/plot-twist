@@ -10,7 +10,7 @@
   const TILE_DIVISOR = 110; // tile size = width / 110
   const TILE_MIN_ALPHA = 40; // a tile is "person" if its mask alpha is above this (0–255)
   const SOFT_EDGE_DIVISOR = 90; // the filled-in patch fades out over width / 90 px
-  const PHOTO_FADE_MS = 1200; // after the dust settles, fade into the empty background photo over this
+  const PHOTO_FADE_MS = 1200; // the empty background photo is fully in this long after the dust settles
   const PHOTO_RETURN_MS = 500; // on return, fade the photo back out over this
 
   const rand = (a, b) => a + Math.random() * (b - a);
@@ -21,6 +21,13 @@
   function photoBlend(ms, fadeMs) {
     const k = clamp01(ms / fadeMs);
     return k * k * (3 - 2 * k);
+  }
+
+  // How much of the empty background photo covers the frame, ms after the
+  // vanish started. It fades in underneath the dust from the start, so the
+  // frame is already (almost) the photo when the dust settles: no visible jump.
+  function photoAlphaAt(ms) {
+    return photoBlend(ms, DUST_MS + PHOTO_FADE_MS);
   }
 
   function createVanish() {
@@ -93,7 +100,7 @@
 
     function photoAlpha(now) {
       if (!photo) return 0;
-      if (mode === 'vanished') return photoBlend(now - modeAt - DUST_MS, PHOTO_FADE_MS);
+      if (mode === 'vanishing' || mode === 'vanished') return photoAlphaAt(now - modeAt);
       if (mode === 'reappearing') return photoAtReturn * (1 - clamp01((now - modeAt) / PHOTO_RETURN_MS));
       return 0;
     }
@@ -165,7 +172,7 @@
       draw(ctx, source, sw, sh, now) {
         resize(sw, sh);
         const elapsed = now - modeAt;
-        if (mode === 'vanishing' && elapsed >= DUST_MS) mode = 'vanished';
+        if (mode === 'vanishing' && elapsed >= DUST_MS) mode = 'vanished'; // modeAt stays: the photo fade continues
         if (mode === 'reappearing' && elapsed >= DUST_MS) mode = 'visible';
         if (mode === 'visible') { ctx.drawImage(source, 0, 0, w, h); return; }
         drawEmptyBackground(ctx, source);
@@ -179,5 +186,5 @@
     };
   }
 
-  root.PlotTwistVanish = { createVanish, photoBlend, DUST_MS, PHOTO_FADE_MS };
+  root.PlotTwistVanish = { createVanish, photoBlend, photoAlphaAt, DUST_MS, PHOTO_FADE_MS };
 })(globalThis);

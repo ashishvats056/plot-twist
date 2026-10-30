@@ -40,5 +40,10 @@ for cfg in "plain remote" "effect remote"; do
   echo "$line"
   case "$line" in *"cinema:OK facepalm:OK money:OK vanish:OK return:OK live-switch:OK"*) ;; *) status=1 ;; esac
 done
+# Vanish into a captured empty background photo: no jump when the dust settles.
+rm -rf profile-*
+line=$(python3 regress.py "$ext" photo plain remote 2>&1 | python3 summary.py "photo plain") || true
+echo "$line"
+case "$line" in *"vanish:OK"*"photo-fade:OK"*) ;; *) status=1 ;; esac
 [ $status -eq 0 ] && echo "e2e: all passed" || echo "e2e: FAILED"
 exit $status

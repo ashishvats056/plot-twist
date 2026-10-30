@@ -105,6 +105,10 @@ async def main():
                           'max_green': max(s['green'] for s in series),
                           'diffs': [s['diff'] for s in series]}
             await page.wait_for_timeout(1500)
+        if TAG == 'photo':  # capture an empty background first (the "person" stays: fine for timing)
+            await q({'type': 'captureBackground'})
+            await page.wait_for_timeout(5800)
+            res['has_photo'] = (await q({'type': 'getState'}))['state'].get('hasBackgroundPhoto')
         await run('cinema', 'cinema', 2400)
         await run('facepalm', 'facepalm', 2400)
         await run('money', 'doubleSnap', 3000)
