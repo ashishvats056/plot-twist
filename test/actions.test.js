@@ -20,8 +20,8 @@ test('gestures: each auto-detect setting gates only its own gestures', () => {
   assert.equal(A.allowsGesture('snap', { autoCinema: true, autoFacepalm: true }), false);
 });
 
-test('defaults: cinema gesture automatic, snaps and facepalm opt-in', () => {
-  assert.deepEqual(A.DEFAULT_SETTINGS, { autoSnap: false, autoFacepalm: false, autoCinema: true });
+test('defaults: effects on, cinema gesture automatic, snaps and facepalm opt-in', () => {
+  assert.deepEqual(A.DEFAULT_SETTINGS, { enabled: true, autoSnap: false, autoFacepalm: false, autoCinema: true });
   assert.equal(A.allowsGesture('cinema', A.DEFAULT_SETTINGS), true);
   assert.equal(A.allowsGesture('snap', A.DEFAULT_SETTINGS), false);
   assert.equal(A.allowsGesture('facepalm', A.DEFAULT_SETTINGS), false);
@@ -33,12 +33,38 @@ test('every auto-detect toggle has a label and a known setting key', () => {
   for (const t of A.GESTURE_TOGGLES) assert.ok(t.label && t.key in A.DEFAULT_SETTINGS);
 });
 
+test('the master switch does not count as a gesture setting', () => {
+  assert.ok(!Object.values(A.GESTURE_SETTINGS).includes('enabled'));
+  assert.ok(!A.GESTURE_TOGGLES.some((t) => t.key === 'enabled'));
+});
+
+test('popup state from the page is sanitized before use', () => {
+  assert.deepEqual(A.sanitizeState(null), null);
+  const s = A.sanitizeState({
+    mode: 'vanished', hasCamera: 1, needsRestart: 0, countdown: 3.7, hasRoomPhoto: true,
+    thumb: 'data:image/jpeg;base64,AAAA', settings: { autoSnap: true }, extra: 'x',
+  });
+  assert.deepEqual(s, {
+    mode: 'vanished', hasCamera: true, needsRestart: false, countdown: 4, hasRoomPhoto: true,
+    thumb: 'data:image/jpeg;base64,AAAA', settings: { ...A.DEFAULT_SETTINGS, autoSnap: true },
+  });
+  const bad = A.sanitizeState({ mode: '<img>', countdown: 1e9, thumb: 'javascript:alert(1)' });
+  assert.equal(bad.mode, 'visible');
+  assert.equal(bad.countdown, 0);
+  assert.equal(bad.thumb, null);
+  assert.equal(A.sanitizeState({ thumb: `data:image/jpeg;base64,${'A'.repeat(300000)}` }).thumb, null);
+});
+
+test('only the four effect triggers are accepted from the popup', () => {
+  assert.deepEqual([...A.TRIGGERS].sort(), ['cinema', 'doubleSnap', 'facepalm', 'snap']);
+});
+
 test('sanitizeSettings keeps known keys as booleans and fills in defaults', () => {
   assert.deepEqual(A.sanitizeSettings(undefined), A.DEFAULT_SETTINGS);
   assert.deepEqual(A.sanitizeSettings(null), A.DEFAULT_SETTINGS);
   assert.deepEqual(A.sanitizeSettings('nope'), A.DEFAULT_SETTINGS);
-  const s = A.sanitizeSettings({ autoSnap: true, evil: true, autoCinema: 'yes', __proto__: { autoFacepalm: true } });
-  assert.deepEqual(s, { autoSnap: true, autoFacepalm: false, autoCinema: true });
+  const s = A.sanitizeSettings({ autoSnap: true, enabled: 0, evil: true, autoCinema: 'yes', __proto__: { autoFacepalm: true } });
+  assert.deepEqual(s, { enabled: false, autoSnap: true, autoFacepalm: false, autoCinema: true });
   assert.equal(Object.prototype.hasOwnProperty.call(s, 'evil'), false);
 });
 
