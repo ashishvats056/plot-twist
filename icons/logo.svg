@@ -1,22 +1,32 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
   <title>Plot Twist</title>
   <defs>
-    <linearGradient id="pt-bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#FFC233"/>
-      <stop offset="1" stop-color="#FF4F5E"/>
+    <linearGradient id="pt-bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4C8DF6"/>
+      <stop offset="1" stop-color="#1A5DD8"/>
     </linearGradient>
+    <clipPath id="pt-tile"><rect x="18" y="26" width="92" height="76" rx="14"/></clipPath>
   </defs>
-  <rect width="128" height="128" rx="30" fill="url(#pt-bg)"/>
-  <!-- video camera: body + lens wedge -->
-  <rect x="14" y="30" width="72" height="68" rx="16" fill="#1B1424"/>
-  <path d="M90 56 L116 38 V90 L90 72 Z" fill="#1B1424" stroke="#1B1424" stroke-width="6" stroke-linejoin="round"/>
-  <!-- "?!" plot-twist mark on the camera -->
-  <g fill="none" stroke="#FFFFFF" stroke-width="9" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M31 51 C31 44 36 40 42 40 C49 40 53 44 53 50 C53 56 47 58 44 61 C42.5 62.5 42 64 42 67"/>
-    <path d="M68 41 L66 67"/>
+  <rect width="128" height="128" rx="28" fill="url(#pt-bg)"/>
+  <!-- video tile -->
+  <rect x="18" y="26" width="92" height="76" rx="14" fill="#FFFFFF"/>
+  <!-- person: left half solid, right half breaking into particles -->
+  <g clip-path="url(#pt-tile)" fill="#1A5DD8">
+    <path d="M30 102 C30 82 40 72 56 72 L64 72 L64 102 Z"/>
+    <path d="M64 41 A14 14 0 0 0 64 69 Z"/>
   </g>
-  <g fill="#FFFFFF">
-    <circle cx="42" cy="82" r="5.5"/>
-    <circle cx="65.2" cy="82" r="5.5"/>
+  <g fill="#1A5DD8">
+    <rect x="65" y="44" width="7" height="7" rx="1.5"/>
+    <rect x="65" y="54" width="7" height="7" rx="1.5"/>
+    <rect x="74" y="49" width="6" height="6" rx="1.5" opacity="0.85"/>
+    <rect x="65" y="75" width="7" height="7" rx="1.5"/>
+    <rect x="65" y="85" width="7" height="7" rx="1.5"/>
+    <rect x="74" y="80" width="6" height="6" rx="1.5" opacity="0.85"/>
+    <rect x="74" y="90" width="6" height="6" rx="1.5" opacity="0.85"/>
+    <rect x="83" y="62" width="5" height="5" rx="1.2" opacity="0.65"/>
+    <rect x="84" y="84" width="5" height="5" rx="1.2" opacity="0.65"/>
+    <rect x="92" y="54" width="4" height="4" rx="1" opacity="0.45"/>
+    <rect x="94" y="74" width="4" height="4" rx="1" opacity="0.45"/>
+    <rect x="100" y="64" width="3" height="3" rx="0.8" opacity="0.3"/>
   </g>
 </svg>
