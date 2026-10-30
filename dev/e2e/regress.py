@@ -36,6 +36,31 @@ function makeReplace(cam) {
     c.enqueue(new VideoFrame(cv, { timestamp: f.timestamp })); f.close(); } })).pipeTo(gen.writable);
   return gen;
 }
+// Meet background picture with a stand-in for Meet's person segmentation: the
+// statue's area counts as "person" only while it still looks like the statue
+// (snapshot of the first frames). If our camera stage erases you, Meet sees no
+// person there and its blue background picture fills your place.
+const inBox = (i) => { const px = (i / 4) % 160, py = Math.floor(i / 4 / 160); return px > 40 && px < 125 && py > 5; };
+function makeBgPicture(cam) {
+  const gen = new MediaStreamTrackGenerator({ kind: 'video' });
+  const proc = new MediaStreamTrackProcessor({ track: cam });
+  const cv = new OffscreenCanvas(160, 90), x = cv.getContext('2d', { willReadFrequently: true });
+  const out = new OffscreenCanvas(2, 2), o = out.getContext('2d');
+  let person = null, n = 0;
+  proc.readable.pipeThrough(new TransformStream({ transform(f, c) {
+    const W = f.displayWidth, H = f.displayHeight; out.width = W; out.height = H;
+    x.drawImage(f, 0, 0, 160, 90); const img = x.getImageData(0, 0, 160, 90);
+    if (n++ === 5) person = img.data.slice();
+    const m = new ImageData(160, 90);
+    for (let i = 0; i < img.data.length; i += 4) {
+      const looksLikePerson = person && inBox(i) && Math.abs(img.data[i] - person[i]) + Math.abs(img.data[i+1] - person[i+1]) + Math.abs(img.data[i+2] - person[i+2]) < 60;
+      m.data[i] = 30; m.data[i+1] = 90; m.data[i+2] = 220; m.data[i+3] = looksLikePerson || !person ? 0 : 255;
+    }
+    o.drawImage(f, 0, 0, W, H);
+    x.putImageData(m, 0, 0); o.drawImage(cv, 0, 0, W, H);
+    c.enqueue(new VideoFrame(out, { timestamp: f.timestamp })); f.close(); } })).pipeTo(gen.writable);
+  return gen;
+}
 function makeEffect(cam) {
   const gen = new MediaStreamTrackGenerator({ kind: 'video' });
   const proc = new MediaStreamTrackProcessor({ track: cam });
@@ -49,7 +74,7 @@ function makeEffect(cam) {
 window.join = async () => {
   const s = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 360 }, audio: false });
   const cam = s.getVideoTracks()[0];
-  const sent = MODE === 'plain' ? cam : MODE === 'replace' ? makeReplace(cam) : makeEffect(cam);
+  const sent = MODE === 'plain' ? cam : MODE === 'replace' ? makeReplace(cam) : MODE === 'bgpic' ? makeBgPicture(cam) : makeEffect(cam);
   document.getElementById('self').srcObject = new MediaStream([MODE === 'pipe' ? cam : sent]);
   const a = new RTCPeerConnection(), b = new RTCPeerConnection();
   b.ontrack = (e) => { const rv = document.getElementById('remote'); rv.srcObject = new MediaStream([e.track]); rv.play().catch(() => {}); };
@@ -67,18 +92,19 @@ let prev = null; window.VIEW = '%VIEW%';
 window.sample = () => {
   const c = document.getElementById('c'), x = c.getContext('2d', { willReadFrequently: true });
   x.drawImage(document.getElementById(window.VIEW), 0, 0, 160, 90);
-  const d = x.getImageData(0, 0, 160, 90).data; let sat = 0, green = 0, diff = 0, edgeGreen = 0;
+  const d = x.getImageData(0, 0, 160, 90).data; let sat = 0, green = 0, diff = 0, edgeGreen = 0, blue = 0;
   for (let i = 0; i < d.length; i += 4) {
     const r = d[i], g = d[i+1], b = d[i+2];
     const px = (i / 4) % 160, py = Math.floor(i / 4 / 160);
     const outside = ((px - 80) / 35) ** 2 + ((py - 49.5) / 45) ** 2 > 1.15;
+    if (b > 180 && r < 70 && g > 60 && g < 130) { blue++; if (inBox(i)) window.__blueIn = (window.__blueIn || 0) + 1; }
     if (outside && Math.abs(r - 95) < 30 && Math.abs(g - 159) < 30 && Math.abs(b - 90) < 30) edgeGreen++;
     sat += Math.max(r, g, b) - Math.min(r, g, b);
     if (Math.abs(r - 95) < 30 && Math.abs(g - 159) < 30 && Math.abs(b - 90) < 30) green++;
     if (prev) diff += Math.abs(r - prev[i]) + Math.abs(g - prev[i+1]) + Math.abs(b - prev[i+2]);
   }
-  prev = d; const n = d.length / 4;
-  return { sat: +(sat / n).toFixed(1), green: +(green / n).toFixed(3), edgeGreen: +(edgeGreen / n).toFixed(3), diff: +(diff / n / 3).toFixed(2), img: c.toDataURL('image/jpeg', 0.7) };
+  prev = d; const n = d.length / 4; const bi = window.__blueIn || 0; window.__blueIn = 0;
+  return { sat: +(sat / n).toFixed(1), green: +(green / n).toFixed(3), edgeGreen: +(edgeGreen / n).toFixed(3), blue: +(blue / n).toFixed(3), blueIn: +(bi / (84 * 84)).toFixed(3), diff: +(diff / n / 3).toFixed(2), img: c.toDataURL('image/jpeg', 0.7) };
 };
 </script>""".replace('%MODE%', MODE).replace('%VIEW%', VIEW)
 
@@ -118,7 +144,7 @@ async def main():
                 await page.wait_for_timeout(every)
                 s = await page.evaluate('sample()'); series.append(s)
             shots.extend([series[len(series) * k // 4]['img'] for k in range(4)])
-            res[label] = {'base_sat': base['sat'], 'min_sat': min(s['sat'] for s in series),
+            res[label] = {'base_sat': base['sat'], 'base_blue': base['blue'], 'min_sat': min(s['sat'] for s in series),
                           'max_green': max(s['green'] for s in series),
                           'max_edge_green': max(s['edgeGreen'] for s in series),
                           'diffs': [s['diff'] for s in series]}
@@ -132,6 +158,9 @@ async def main():
         await run('money', 'doubleSnap', 3000)
         await run('vanish', 'snap', 3000, 100)
         res['mode_after_vanish'] = (await q({'type': 'getState'}))['state']['mode']
+        res['blue_before'] = res['vanish'].get('base_blue')
+        await page.wait_for_timeout(800)
+        sv = await page.evaluate('sample()'); res['blue_vanished'] = sv['blue']; res['blue_in_vanished'] = sv['blueIn']
         await run('return', 'snap', 2800, 100)
         if TAG == 'live':  # and off again: money must not show
             await pg.evaluate("chrome.storage.sync.set({enabled: false})")
@@ -147,7 +176,7 @@ async def main():
         sheet = await ctx.new_page(); await sheet.set_viewport_size({'width': 640, 'height': 450})
         await sheet.set_content(html); await sheet.wait_for_timeout(300)
         await sheet.screenshot(path=os.path.join(HERE, f'sheet-{TAG}.png'))
-        res['viewer'] = VIEW
+        res['viewer'] = VIEW; res['mode'] = MODE
         print(json.dumps(res))
         await ctx.close()
 

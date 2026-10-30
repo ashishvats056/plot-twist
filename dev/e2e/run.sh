@@ -7,6 +7,8 @@
 #   pipe   — the page runs its own effects pipeline in passthrough (like Meet
 #            with no background set), self view shows the camera
 #   effect — the page sends its own processed track (like a Meet background)
+#   bgpic  — Meet background picture with stand-in person segmentation: a
+#            vanish must reveal Meet's picture where you were
 #   replace — like effect, but the processed track replaces the background
 #            around the person (Meet background picture): overlays must survive it
 # Needs: python3 + playwright (pip install playwright; playwright install chromium), ffmpeg.
@@ -42,6 +44,11 @@ for cfg in "plain remote" "effect remote"; do
   echo "$line"
   case "$line" in *"cinema:OK facepalm:OK money:OK vanish:OK return:OK live-switch:OK"*) ;; *) status=1 ;; esac
 done
+# Meet background picture: vanishing must reveal Meet's picture where you were.
+rm -rf profile-*
+line=$(python3 regress.py "$ext" t bgpic remote 2>&1 | python3 summary.py "meet-bg-picture") || true
+echo "$line"
+case "$line" in *"vanish:OK"*"meet-bg-fills:OK"*) ;; *) status=1 ;; esac
 # Vanish into a captured empty background photo: no jump when the dust settles.
 rm -rf profile-*
 line=$(python3 regress.py "$ext" photo plain remote 2>&1 | python3 summary.py "photo plain") || true

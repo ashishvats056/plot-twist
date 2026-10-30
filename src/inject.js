@@ -354,6 +354,7 @@
     generator.applyConstraints = (c) => track.applyConstraints(c);
     overlaid.set(track, generator);
     meetTrackOf.set(generator, track);
+    liveOverlayTracks.add(generator);
     log('overlay stage on Meet video');
     return generator;
   }
@@ -418,6 +419,12 @@
       }
     }, POLL_MS);
   })();
+
+  const liveOverlayTracks = new Set();
+  function meetSending() {
+    for (const t of liveOverlayTracks) if (t.readyState !== 'live') liveOverlayTracks.delete(t);
+    return liveOverlayTracks.size > 0;
+  }
 
   function wrapVideoTrack(track) {
     state.cameras += 1;
@@ -575,6 +582,9 @@
       hasCamera: state.cameras > 0,
       countdown: state.countdown,
       hasBackgroundPhoto: !!renderer.bgPhoto,
+      // Meet is sending a processed copy of the camera (blur / background
+      // picture). Its passthrough copy counts too, so this is a hint only.
+      meetEffect: meetSending(),
       thumb: state.thumb,
       settings: state.settings,
     };

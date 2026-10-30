@@ -81,6 +81,7 @@
     if (!state.hasCamera) return 'Turn your camera on in Meet to use effects.';
     if (state.countdown) return `Step out of frame… ${state.countdown}`;
     if (state.hasBackgroundPhoto) return 'Vanish will fade into your empty background photo.';
+    if (state.meetEffect) return 'Using a Meet background? Vanish reveals it, no capture needed.';
     return 'Tip: capture an empty background for a cleaner vanish.';
   }
 

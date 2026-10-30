@@ -59,6 +59,7 @@
       hasCamera: !!raw.hasCamera,
       countdown: countdown > 0 && countdown <= MAX_COUNTDOWN_S ? countdown : 0,
       hasBackgroundPhoto: !!raw.hasBackgroundPhoto,
+      meetEffect: !!raw.meetEffect,
       thumb,
       settings: sanitizeSettings(raw.settings),
     };
