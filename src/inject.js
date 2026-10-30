@@ -45,7 +45,6 @@
   const state = {
     settings: { ...A.DEFAULT_SETTINGS },
     cameras: 0, // live processed camera tracks
-    rawCameras: [], // camera tracks passed through untouched because effects were off
     detectorOrigin: null, // told by the bridge; frames from any other origin are ignored
     countdown: 0, // seconds left before the empty background photo is taken
     thumb: null, // small JPEG data URL of the empty background photo, for the popup
@@ -209,6 +208,7 @@
       const now = performance.now();
       if (startedAt === null) startedAt = now;
       if (!state.settings.enabled) { ctx.drawImage(source, 0, 0, w, h); return out; }
+      detector.start(); // no-op once started; only ever started with effects on
       if (state.pendingMask) {
         renderer.setMask(segFrame, state.pendingMask, w, h, worthLearning(now), state.pendingHands);
         state.pendingMask.close();
@@ -394,13 +394,9 @@
       }
       const [video] = stream.getVideoTracks();
       if (!video) return stream;
-      if (!state.settings.enabled) {
-        // Effects off: Meet gets the real camera; no detector, no mic tap.
-        state.rawCameras = [...state.rawCameras.filter((t) => t.readyState === 'live'), video];
-        log('effects off: camera passed through');
-        return stream;
-      }
-      detector.start();
+      // Always wrapped, so the Effects switch works live during a call. While
+      // effects are off, frames are copied through unchanged, and no detector
+      // or mic tap exists until effects are switched on.
       return new MediaStream([wrapVideoTrack(video), ...stream.getAudioTracks()]);
     } catch (err) {
       log(`passthrough: ${err.message}`);
@@ -411,8 +407,7 @@
   setInterval(() => { const now = performance.now(); handle(engine.tick(now), now); }, TICK_MS);
 
   // Settings are saved by the popup (chrome.storage) and relayed by the bridge.
-  // Switching effects off during a call passes frames through live; switching
-  // them on only applies to the next camera start (the popup says so).
+  // All of them apply live, including the Effects switch.
   function applySettings(next) {
     const prev = state.settings;
     state.settings = next;
@@ -461,8 +456,6 @@
     return {
       mode: renderer.mode,
       hasCamera: state.cameras > 0,
-      needsRestart: state.settings.enabled && state.cameras === 0
-        && state.rawCameras.some((t) => t.readyState === 'live'),
       countdown: state.countdown,
       hasBackgroundPhoto: !!renderer.bgPhoto,
       thumb: state.thumb,

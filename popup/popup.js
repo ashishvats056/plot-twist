@@ -12,6 +12,7 @@
   const $ = (id) => document.getElementById(id);
 
   let tabId = null;
+  let noContentScript = false; // a Meet tab opened before the extension was installed/reloaded
   let state = null; // sanitized state from the Meet tab, or null
   let settings = { ...A.DEFAULT_SETTINGS };
 
@@ -22,9 +23,16 @@
       tabId = tab.id;
     }
     try {
-      return await chrome.tabs.sendMessage(tabId, msg);
+      const res = await chrome.tabs.sendMessage(tabId, msg);
+      noContentScript = false;
+      return res;
     } catch {
-      return null; // not a Meet tab, or the tab was opened before the extension loaded
+      // Not a Meet tab, or a Meet tab without our script (opened before the
+      // extension was installed/reloaded). Only Meet tabs expose their URL to
+      // us (host permission), so a URL means the latter.
+      const tab = await chrome.tabs.get(tabId).catch(() => null);
+      noContentScript = !!(tab && tab.url && tab.url.startsWith('https://meet.google.com/'));
+      return null;
     }
   }
 
@@ -67,10 +75,10 @@
   $('clear').addEventListener('click', () => send({ type: 'clearBackground' }).then(refresh));
 
   function statusText() {
+    if (noContentScript) return 'Reload this Meet tab to use Plot Twist.';
     if (!state) return 'Open a Meet call with your camera on.';
     if (!settings.enabled) return 'Effects are off. Your camera is sent unchanged.';
-    if (state.needsRestart) return 'Turn your camera off and on again to start effects.';
-    if (!state.hasCamera) return 'Open a Meet call with your camera on.';
+    if (!state.hasCamera) return 'Turn your camera on in Meet to use effects.';
     if (state.countdown) return `Step out of frame… ${state.countdown}`;
     if (state.hasBackgroundPhoto) return 'Vanish will fade into your empty background photo.';
     return 'Tip: capture an empty background for a cleaner vanish.';

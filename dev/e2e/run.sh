@@ -32,5 +32,13 @@ for cfg in "plain self" "plain remote" "pipe self" "pipe remote" "effect self" "
   echo "$line"
   case "$line" in *"cinema:OK facepalm:OK money:OK vanish:OK return:OK"*) ;; *) status=1 ;; esac
 done
+# Effects off at join, switched on mid-call (must all work), then off again.
+for cfg in "plain remote" "effect remote"; do
+  set -- $cfg
+  rm -rf profile-*
+  line=$(python3 regress.py "$ext" live "$1" "$2" 2>&1 | python3 summary.py "live-switch $1") || true
+  echo "$line"
+  case "$line" in *"cinema:OK facepalm:OK money:OK vanish:OK return:OK live-switch:OK"*) ;; *) status=1 ;; esac
+done
 [ $status -eq 0 ] && echo "e2e: all passed" || echo "e2e: FAILED"
 exit $status

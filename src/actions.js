@@ -57,7 +57,6 @@
     return {
       mode: MODES.includes(raw.mode) ? raw.mode : 'visible',
       hasCamera: !!raw.hasCamera,
-      needsRestart: !!raw.needsRestart,
       countdown: countdown > 0 && countdown <= MAX_COUNTDOWN_S ? countdown : 0,
       hasBackgroundPhoto: !!raw.hasBackgroundPhoto,
       thumb,

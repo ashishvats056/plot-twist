@@ -79,7 +79,14 @@ async def main():
         pg = await ctx.new_page(); await pg.goto('chrome://extensions'); await pg.wait_for_timeout(500)
         ext = await pg.evaluate("document.querySelector('extensions-manager').shadowRoot.querySelector('extensions-item-list').shadowRoot.querySelector('extensions-item').id")
         await pg.goto(f'chrome-extension://{ext}/popup/popup.html')
+        if TAG == 'live':  # join with effects off, switch them on mid-call
+            await pg.evaluate("chrome.storage.sync.set({enabled: false})")
+            await page.wait_for_timeout(300)
         res = {'tag': TAG, 'effect': EFFECT, 'connected': await page.evaluate('join()')}
+        if TAG == 'live':
+            await page.wait_for_timeout(1500)
+            res['detector_while_off'] = await page.evaluate("!!document.getElementById('plottwist-detector')")
+            await pg.evaluate("chrome.storage.sync.set({enabled: true})")
         tid = await pg.evaluate("""chrome.tabs.query({}).then(async ts => { for (const t of ts) { try { if (await chrome.tabs.sendMessage(t.id, {type:'getState'})) return t.id; } catch {} } })""")
         q = lambda m: pg.evaluate(f"chrome.tabs.sendMessage({tid}, {json.dumps(m)})")
         await page.wait_for_timeout(6000)  # detector warm-up + person mask
@@ -104,6 +111,15 @@ async def main():
         await run('vanish', 'snap', 3000, 100)
         res['mode_after_vanish'] = (await q({'type': 'getState'}))['state']['mode']
         await run('return', 'snap', 2800, 100)
+        if TAG == 'live':  # and off again: money must not show
+            await pg.evaluate("chrome.storage.sync.set({enabled: false})")
+            await page.wait_for_timeout(500)
+            await q({'type': 'trigger', 'event': 'doubleSnap'})
+            g = 0
+            for i in range(8):
+                await page.wait_for_timeout(250); g = max(g, (await page.evaluate('sample()'))['green'])
+            res['off_again_green'] = g
+            await pg.evaluate("chrome.storage.sync.set({enabled: true})")
         res['errors'] = errs
         html = '<body style="margin:0;background:#000">' + ''.join(f'<img src="{s}" width=160>' for s in shots) + '</body>'
         sheet = await ctx.new_page(); await sheet.set_viewport_size({'width': 640, 'height': 450})

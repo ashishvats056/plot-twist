@@ -26,7 +26,7 @@ If **Load unpacked** is greyed out, your Chrome is managed by your organisation 
 
 Click the **Plot Twist** icon in Chrome's toolbar while you're in a Meet call (pin it from the puzzle-piece menu). The popup has the effect buttons, the empty background photo, the auto-detect settings and a master **Effects** switch. It talks only to the active tab, so open it from the Meet tab.
 
-- **Effects switch** (saved): when off, Meet gets your camera untouched, and no detector or mic tap is created. Switching it off during a call takes effect immediately (frames pass straight through). Switching it back on applies the next time your camera starts: turn the camera off and on in Meet (the popup tells you).
+- **Effects switch** (saved): when off, Meet gets your camera untouched, and no detector or mic tap is created. It applies live in both directions during a call. If the popup says "Reload this Meet tab", the tab was opened before the extension was installed or reloaded.
 
 - **📷 Capture empty background** (recommended before you vanish): click it, step out of frame during the 5-second countdown (you can close the popup; the countdown keeps running in the Meet tab), and it takes one photo of the background without you. After the dust settles, a vanish then fades quickly (about 1 s) into this photo, so no outline or halo of you is left. **Return** fades back to live and re-forms you. The photo is kept in memory for this tab only: it's never saved to disk, and it's deleted when your camera stops, when you leave or reload, or when you click **✕**.
 - **Without an empty background photo**, a vanish still erases only you and keeps the rest of the frame live. The space where you were is filled with the background as the camera has seen it. Lean left and right once so it can see behind you.
@@ -98,7 +98,6 @@ Tuning values (pinch thresholds, hold times, cooldowns, mic sensitivity) are at 
 ## Troubleshooting
 
 - The popup says **"Open a Meet call with your camera on"** while you're in a call → the Meet tab was opened before the extension was installed or reloaded. Reload the Meet tab.
-- **"Turn your camera off and on again"** → effects were switched on during a call; the next camera start picks them up.
 - Effects don't appear → check that the extension is enabled, then reload it in `chrome://extensions` **and** reload the Meet tab (Chrome only gives a tab new content scripts on page load).
 - Snaps get missed → in `src/gestures.js`, lower `minPeak` or `minHfRatio` in `createAudioTransientDetector`, raise `handRecentMs`, or lower `pressHoldMs`. Snaps fire by accident → do the opposite.
 
