@@ -74,15 +74,17 @@
   $('capture').addEventListener('click', () => send({ type: 'captureBackground' }).then(refresh));
   $('clear').addEventListener('click', () => send({ type: 'clearBackground' }).then(refresh));
 
-  function statusText() {
-    if (noContentScript) return 'Reload this Meet tab to use Plot Twist.';
-    if (!state) return 'Open a Meet call with your camera on.';
-    if (!settings.enabled) return 'Effects are off. Your camera is sent unchanged.';
-    if (!state.hasCamera) return 'Turn your camera on in Meet to use effects.';
-    if (state.countdown) return `Step out of frame… ${state.countdown}`;
-    if (state.hasBackgroundPhoto) return 'Vanish will fade into your empty background photo.';
-    if (state.meetEffect) return 'Using a Meet background? Vanish reveals it, no capture needed.';
-    return 'Tip: capture an empty background for a cleaner vanish.';
+  // [text, tone]: tone colours the status dot (ok / warn / busy / off).
+  function status() {
+    if (noContentScript) return ['Reload this Meet tab to use Plot Twist.', 'warn'];
+    if (!state) return ['Open a Meet call with your camera on.', 'off'];
+    if (!settings.enabled) return ['Effects off. Your camera is sent unchanged.', 'off'];
+    if (!state.hasCamera) return ['Turn your camera on in Meet.', 'warn'];
+    if (state.countdown) return [`Step out of frame… ${state.countdown}`, 'busy'];
+    if (state.mode === 'vanished') return ['You have vanished. Click Return to come back.', 'ok'];
+    if (state.hasBackgroundPhoto) return ['Ready. Vanish fades into your empty background.', 'ok'];
+    if (state.meetEffect) return ['Ready. Vanish reveals your Meet background.', 'ok'];
+    return ['Ready. Tip: capture an empty background first.', 'ok'];
   }
 
   function render() {
@@ -91,22 +93,28 @@
       b.disabled = !a.enabled();
     }
     $('enabled').checked = settings.enabled;
-    $('master-note').textContent = settings.enabled ? 'On for your Meet camera' : 'Camera passes through untouched';
+    $('master-note').textContent = settings.enabled ? 'Effects for your Meet camera' : 'Effects off';
     for (const t of toggles) {
       t.input.checked = settings[t.key];
       t.input.disabled = !settings.enabled;
     }
-    $('toggles').classList.toggle('disabled', !settings.enabled);
+    $('toggles').parentElement.classList.toggle('disabled', !settings.enabled);
 
     const live = controller.hasCamera;
     const counting = !!(state && state.countdown);
     $('capture').disabled = !live || counting;
+    const hasPhoto = !!(state && state.hasBackgroundPhoto);
     $('capture-label').textContent = counting ? `Step out of frame… ${state.countdown}`
-      : `${state && state.hasBackgroundPhoto ? 'Retake' : 'Capture'} empty background`;
+      : `${hasPhoto ? 'Retake' : 'Capture'} empty background`;
+    $('capture-hint').textContent = counting ? 'Taking the photo when the count ends'
+      : hasPhoto ? 'Used when you vanish (this call only)'
+        : state && state.meetEffect ? 'Optional with a Meet background' : 'Step out of frame for 5 s';
     const thumb = state && state.hasBackgroundPhoto && state.thumb;
     $('thumb-wrap').hidden = !(state && state.hasBackgroundPhoto);
     if (thumb && $('thumb').getAttribute('src') !== thumb) $('thumb').src = thumb;
-    $('status').textContent = statusText();
+    const [text, tone] = status();
+    $('status-text').textContent = text;
+    $('status').dataset.tone = tone;
   }
 
   async function refresh() {

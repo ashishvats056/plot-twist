@@ -8,25 +8,26 @@
 </head>
 <body>
 <main class="card">
-  <header class="brand">
-    <img src="../icons/logo.svg" alt="" width="44" height="44">
-    <h1>Plot Twist</h1>
+  <header class="top">
+    <img class="logo" src="../icons/logo.svg" alt="" width="32" height="32">
+    <div class="title">
+      <h1>Plot Twist</h1>
+      <p id="master-note">Effects for your Meet camera</p>
+    </div>
+    <input type="checkbox" id="enabled" role="switch" aria-label="Effects on or off" title="Effects on/off">
   </header>
 
-  <label class="master">
-    <span>
-      <strong>Effects</strong>
-      <small id="master-note">On for your Meet camera</small>
-    </span>
-    <input type="checkbox" id="enabled" role="switch">
-  </label>
+  <p class="status" id="status" role="status"><span class="dot" aria-hidden="true"></span><span id="status-text"></span></p>
 
   <section class="actions" id="actions" aria-label="Effects"></section>
 
   <section class="bg-photo" aria-label="Empty background photo">
     <button type="button" id="capture" class="row-btn">
-      <span class="icon" aria-hidden="true">📷</span>
-      <span id="capture-label">Capture empty background</span>
+      <svg class="row-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h3l2-2h6l2 2h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="12" cy="13" r="3.5" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
+      <span class="row-text">
+        <span id="capture-label">Capture empty background</span>
+        <small id="capture-hint">Step out of frame for 5 s</small>
+      </span>
     </button>
     <div class="thumb" id="thumb-wrap" hidden>
       <img id="thumb" alt="Empty background photo (this call only)">
@@ -34,9 +35,10 @@
     </div>
   </section>
 
-  <section class="toggles" id="toggles" aria-label="Auto-detect"></section>
-
-  <p class="status" id="status" role="status"></p>
+  <section class="settings" aria-label="Auto-detect">
+    <h2>Gestures</h2>
+    <div id="toggles"></div>
+  </section>
 </main>
 <script src="../src/actions.js"></script>
 <script src="popup.js"></script>
