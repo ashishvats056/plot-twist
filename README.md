@@ -4,7 +4,7 @@
 
 | Trigger | Effect |
 |---|---|
-| Raise both hands, palms showing (automatic) | Black-and-white **ABSOLUTE CINEMA** |
+| Raise both hands, palms showing (automatic, can be switched off) | Black-and-white **ABSOLUTE CINEMA** |
 | **🫰 Vanish** button | You turn to dust and vanish (Thanos snap) |
 | **🫰 Return** button | You reassemble |
 | **💸 Money rain** button | Money rains down |
@@ -28,7 +28,8 @@ A **✨ Plot Twist** panel appears on the Meet page once your camera is on. Drag
 
 - **📷 Capture empty room** (recommended before you vanish): click it, step out of frame during the 5-second countdown, and it takes one photo of the room without you. After the dust settles, a vanish then fades quickly (about 1 s) into this photo, so no outline or halo of you is left. **Return** fades back to live and re-forms you. The photo is kept in memory for this tab only: it's never saved to disk, and it's deleted when your camera stops, when you leave or reload, or when you click **✕**.
 - **Without a room photo**, a vanish still erases only you and keeps the rest of the frame live. The space where you were is filled with the room as the camera has seen it. Lean left and right once so it can see behind you.
-- **Auto-detect snaps / facepalm** (off by default): turn these on to trigger the effects from gestures instead of buttons. Auto snap detection also opens a second, unprocessed stream of your mic to hear snap clicks; with it off, the extension doesn't touch your mic. Both hands up → cinema is always automatic.
+- **Auto-detect snaps / facepalm** (off by default): turn these on to trigger the effects from gestures instead of buttons. Auto snap detection also opens a second, unprocessed stream of your mic to hear snap clicks; with it off, the extension doesn't touch your mic.
+- **Auto-detect Cinema gesture** (on by default): both hands up, palms showing → Absolute Cinema. Untick it to use only the button.
 - Effects are drawn on the video you send. Meet mirrors your self-view, so "CINEMA" looks backwards to you but reads correctly for everyone else.
 
 ### Adding an effect

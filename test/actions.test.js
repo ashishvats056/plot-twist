@@ -10,14 +10,36 @@ function controller(over = {}) {
   return { calls, c: { mode: 'visible', hasCamera: true, trigger: (ev) => calls.push(ev), ...over } };
 }
 
-test('gestures: hands-up cinema is always automatic; snaps and facepalm only when switched on', () => {
-  const off = { autoSnap: false, autoFacepalm: false };
-  assert.equal(A.allowsGesture('cinema', off), true);
-  assert.equal(A.allowsGesture('snap', off), false);
-  assert.equal(A.allowsGesture('doubleSnap', off), false);
-  assert.equal(A.allowsGesture('facepalm', off), false);
+test('gestures: each auto-detect setting gates only its own gestures', () => {
+  const off = { autoSnap: false, autoFacepalm: false, autoCinema: false };
+  for (const ev of ['snap', 'doubleSnap', 'facepalm', 'cinema']) assert.equal(A.allowsGesture(ev, off), false, ev);
   assert.equal(A.allowsGesture('snap', { autoSnap: true }), true);
+  assert.equal(A.allowsGesture('doubleSnap', { autoSnap: true }), true);
   assert.equal(A.allowsGesture('facepalm', { autoFacepalm: true }), true);
+  assert.equal(A.allowsGesture('cinema', { autoCinema: true }), true);
+  assert.equal(A.allowsGesture('snap', { autoCinema: true, autoFacepalm: true }), false);
+});
+
+test('defaults: cinema gesture automatic, snaps and facepalm opt-in', () => {
+  assert.deepEqual(A.DEFAULT_SETTINGS, { autoSnap: false, autoFacepalm: false, autoCinema: true });
+  assert.equal(A.allowsGesture('cinema', A.DEFAULT_SETTINGS), true);
+  assert.equal(A.allowsGesture('snap', A.DEFAULT_SETTINGS), false);
+  assert.equal(A.allowsGesture('facepalm', A.DEFAULT_SETTINGS), false);
+});
+
+test('every auto-detect toggle has a label and a known setting key', () => {
+  const keys = A.GESTURE_TOGGLES.map((t) => t.key);
+  assert.deepEqual(keys, ['autoSnap', 'autoFacepalm', 'autoCinema']);
+  for (const t of A.GESTURE_TOGGLES) assert.ok(t.label && t.key in A.DEFAULT_SETTINGS);
+});
+
+test('sanitizeSettings keeps known keys as booleans and fills in defaults', () => {
+  assert.deepEqual(A.sanitizeSettings(undefined), A.DEFAULT_SETTINGS);
+  assert.deepEqual(A.sanitizeSettings(null), A.DEFAULT_SETTINGS);
+  assert.deepEqual(A.sanitizeSettings('nope'), A.DEFAULT_SETTINGS);
+  const s = A.sanitizeSettings({ autoSnap: true, evil: true, autoCinema: 'yes', __proto__: { autoFacepalm: true } });
+  assert.deepEqual(s, { autoSnap: true, autoFacepalm: false, autoCinema: true });
+  assert.equal(Object.prototype.hasOwnProperty.call(s, 'evil'), false);
 });
 
 test('the vanish button toggles its label and runs a snap', () => {

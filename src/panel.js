@@ -86,10 +86,9 @@
     });
     clear.addEventListener('click', () => fx.clearRoom());
 
-    const toggles = Object.keys(fx.settings).map((key) => {
+    const toggles = window.PlotTwistActions.GESTURE_TOGGLES.map(({ key, label: text }) => {
       const input = el('input', { type: 'checkbox' });
       input.addEventListener('change', () => fx.setSetting(key, input.checked));
-      const text = key === 'autoSnap' ? 'Auto-detect snaps (camera + mic)' : 'Auto-detect facepalm';
       return { key, input, label: el('label', {}, [input, text]) };
     });
 
