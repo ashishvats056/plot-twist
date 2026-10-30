@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="color-scheme" content="light dark">
+<title>Plot Twist</title>
+<link rel="stylesheet" href="popup.css">
+</head>
+<body>
+<main class="card">
+  <header class="brand">
+    <img src="../icons/logo.svg" alt="" width="40" height="40">
+    <h1>Plot Twist</h1>
+  </header>
+
+  <label class="master">
+    <span>
+      <strong>Effects</strong>
+      <small id="master-note">On for your Meet camera</small>
+    </span>
+    <input type="checkbox" id="enabled" role="switch">
+  </label>
+
+  <section class="actions" id="actions" aria-label="Effects"></section>
+
+  <section class="room" aria-label="Empty room photo">
+    <button type="button" id="capture" class="row-btn">
+      <span class="icon" aria-hidden="true">📷</span>
+      <span id="capture-label">Capture empty room</span>
+    </button>
+    <div class="thumb" id="thumb-wrap" hidden>
+      <img id="thumb" alt="Empty room photo (this call only)">
+      <button type="button" id="clear" class="clear" title="Delete room photo" aria-label="Delete room photo">✕</button>
+    </div>
+  </section>
+
+  <section class="toggles" id="toggles" aria-label="Auto-detect"></section>
+
+  <p class="status" id="status" role="status"></p>
+</main>
+<script src="../src/actions.js"></script>
+<script src="popup.js"></script>
+</body>
+</html>

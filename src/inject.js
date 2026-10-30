@@ -7,8 +7,9 @@
   const G = window.PlotTwistGestures;
   const E = window.PlotTwistEffects;
   const A = window.PlotTwistActions;
+  const C = window.PlotTwistChannel;
   const md = navigator.mediaDevices;
-  if (window.__plottwist || !G || !E || !A || !md || !md.getUserMedia) return;
+  if (window.__plottwist || !G || !E || !A || !C || !md || !md.getUserMedia) return;
 
   const IFRAME_ID = 'plottwist-detector';
   const DETECT_WIDTH = 640; // larger input finds small, fast snapping hands more often
@@ -19,6 +20,11 @@
   const TICK_MS = 100;
   const POLL_MS = 1000;
   const LOG_MAX = 50;
+  const SETTINGS_WAIT_MS = 3000; // how long getUserMedia waits for the saved settings
+  const PUBLISH_MS = 250; // how often state is sent to the popup (only when it changed)
+  const CAPTURE_COUNTDOWN_S = 5;
+  const THUMB_W = 192;
+  const THUMB_H = 108;
   const REC_MS = 60000; // debug recorder keeps the last 60 s
 
   const origGetUserMedia = md.getUserMedia.bind(md);
@@ -27,9 +33,12 @@
   const state = {
     settings: { ...A.DEFAULT_SETTINGS },
     cameras: 0, // live processed camera tracks
+    rawCameras: [], // camera tracks passed through untouched because effects were off
+    detectorOrigin: null, // told by the bridge; frames from any other origin are ignored
+    countdown: 0, // seconds left before the room photo is taken
+    thumb: null, // small JPEG data URL of the room photo, for the popup
     micTrack: null, // Meet's mic track, tapped for snap clicks only when autoSnap is on
     wantPhoto: false,
-    enabled: true,
     debug: false,
     log: [],
     lastEvent: '',
@@ -54,6 +63,7 @@
   // source 'gesture': detected (honours the auto-detect settings); 'manual': a
   // button or keyboard shortcut (always runs).
   function handle(events, now, source = 'gesture') {
+    if (!state.settings.enabled) return;
     for (const ev of events) {
       if (source === 'gesture' && !A.allowsGesture(ev, state.settings)) continue;
       log(source === 'manual' ? `${ev} (button)` : ev);
@@ -78,13 +88,16 @@
     let helloTimer = null;
     let lastSegmentAt = -Infinity;
 
+    // The bridge mounts the frame and tells us its origin. A frame with our id
+    // but another origin (planted by the page) is never talked to.
     function locate() {
       frame = document.getElementById(IFRAME_ID);
       if (!frame) {
-        window.dispatchEvent(new CustomEvent('plottwist:mount'));
+        channel.post({ type: 'mount' });
         frame = document.getElementById(IFRAME_ID);
       }
-      origin = frame ? new URL(frame.src, location.href).origin : null;
+      origin = frame && state.detectorOrigin;
+      if (frame && new URL(frame.src, location.href).origin !== origin) frame = null;
       return !!frame;
     }
 
@@ -182,7 +195,7 @@
       }
       const now = performance.now();
       if (startedAt === null) startedAt = now;
-      if (!state.enabled) { ctx.drawImage(source, 0, 0, w, h); return out; }
+      if (!state.settings.enabled) { ctx.drawImage(source, 0, 0, w, h); return out; }
       if (state.pendingMask) {
         renderer.setMask(segFrame, state.pendingMask, w, h, worthLearning(now), state.pendingHands);
         state.pendingMask.close();
@@ -192,6 +205,7 @@
         renderer.setRoomPhoto(source, w, h);
         state.wantPhoto = false;
         log('room photo captured');
+        makeThumb();
       }
       if (state.wantVanish) {
         if (!renderer.vanish(now, source, w, h)) log('vanish skipped: no person mask yet');
@@ -271,7 +285,7 @@
   function cameraStopped() {
     state.cameras = Math.max(0, state.cameras - 1);
     if (state.cameras || !renderer.roomPhoto) return;
-    renderer.clearRoomPhoto();
+    clearRoom();
     log('room photo cleared (camera stopped)');
   }
 
@@ -309,7 +323,7 @@
     audioTap = { source: track, stop: () => {} }; // claim before awaiting so we never tap twice
     try {
       const { listen, raw } = await openRawMic(track);
-      if (!state.settings.autoSnap) { listen.stop(); audioTap = null; return; }
+      if (!wantsMic()) { listen.stop(); audioTap = null; return; }
       const ctx = new AudioContext();
       const input = ctx.createMediaStreamSource(new MediaStream([listen]));
       const node = ctx.createScriptProcessor(1024, 1, 1);
@@ -354,16 +368,25 @@
     }
   }
 
+  const wantsMic = () => state.settings.enabled && state.settings.autoSnap;
+
   md.getUserMedia = async function getUserMedia(constraints) {
     const stream = await origGetUserMedia(constraints);
     try {
+      await settingsLoaded;
       const [audio] = stream.getAudioTracks();
       if (audio) {
         state.micTrack = audio;
-        if (state.settings.autoSnap) tapAudio(audio);
+        if (wantsMic()) tapAudio(audio);
       }
       const [video] = stream.getVideoTracks();
       if (!video) return stream;
+      if (!state.settings.enabled) {
+        // Effects off: Meet gets the real camera; no detector, no mic tap.
+        state.rawCameras = [...state.rawCameras.filter((t) => t.readyState === 'live'), video];
+        log('effects off: camera passed through');
+        return stream;
+      }
       detector.start();
       return new MediaStream([wrapVideoTrack(video), ...stream.getAudioTracks()]);
     } catch (err) {
@@ -374,22 +397,102 @@
 
   setInterval(() => { const now = performance.now(); handle(engine.tick(now), now); }, TICK_MS);
 
-  function setSetting(key, value) {
-    if (!(key in A.DEFAULT_SETTINGS)) return;
-    state.settings = { ...state.settings, [key]: !!value };
-    log(`${key} ${value ? 'on' : 'off'}`);
-    if (key !== 'autoSnap') return;
+  // Settings are saved by the popup (chrome.storage) and relayed by the bridge.
+  // Switching effects off during a call passes frames through live; switching
+  // them on only applies to the next camera start (the popup says so).
+  function applySettings(next) {
+    const prev = state.settings;
+    state.settings = next;
+    for (const key of Object.keys(next)) if (next[key] !== prev[key]) log(`${key} ${next[key] ? 'on' : 'off'}`);
     const mic = state.micTrack;
-    if (value && mic && mic.readyState === 'live') tapAudio(mic);
-    if (!value && audioTap) audioTap.stop();
+    if (wantsMic() && mic && mic.readyState === 'live') tapAudio(mic);
+    if (!wantsMic() && audioTap) audioTap.stop();
+  }
+  function setSetting(key, value) {
+    if (key in A.DEFAULT_SETTINGS) applySettings({ ...state.settings, [key]: !!value });
   }
 
-  const trigger = (ev) => handle([ev], performance.now(), 'manual');
+  function clearRoom() {
+    renderer.clearRoomPhoto();
+    state.thumb = null;
+  }
+
+  function makeThumb() {
+    const photo = renderer.roomPhoto;
+    if (!photo) return;
+    const c = new OffscreenCanvas(THUMB_W, THUMB_H);
+    c.getContext('2d').drawImage(photo, 0, 0, THUMB_W, THUMB_H);
+    c.convertToBlob({ type: 'image/jpeg', quality: 0.75 }).then((blob) => {
+      const reader = new FileReader();
+      reader.onload = () => { if (renderer.roomPhoto === photo) state.thumb = reader.result; };
+      reader.readAsDataURL(blob);
+    }).catch(() => {});
+  }
+
+  // The countdown runs here, not in the popup: the popup closes as soon as it
+  // loses focus, which must not cancel the capture.
+  let countdownTimer = null;
+  function captureRoom() {
+    if (countdownTimer || !state.cameras || !state.settings.enabled) return;
+    state.countdown = CAPTURE_COUNTDOWN_S;
+    countdownTimer = setInterval(() => {
+      state.countdown -= 1;
+      if (state.countdown > 0) return;
+      clearInterval(countdownTimer);
+      countdownTimer = null;
+      if (state.cameras) state.wantPhoto = true;
+    }, 1000);
+  }
+
+  function snapshot() {
+    return {
+      mode: renderer.mode,
+      hasCamera: state.cameras > 0,
+      needsRestart: state.settings.enabled && state.cameras === 0
+        && state.rawCameras.some((t) => t.readyState === 'live'),
+      countdown: state.countdown,
+      hasRoomPhoto: !!renderer.roomPhoto,
+      thumb: state.thumb,
+      settings: state.settings,
+    };
+  }
+
+  const trigger = (ev) => { if (state.settings.enabled) handle([ev], performance.now(), 'manual'); };
   const controller = {
     get mode() { return renderer.mode; },
-    get hasCamera() { return state.cameras > 0; },
+    get hasCamera() { return state.cameras > 0 && state.settings.enabled; },
     trigger,
   };
+
+  let markSettingsLoaded;
+  const settingsLoaded = new Promise((resolve) => { markSettingsLoaded = resolve; });
+  setTimeout(() => markSettingsLoaded(), SETTINGS_WAIT_MS); // never block Meet's camera for long
+
+  const channel = C.openMain((msg) => {
+    switch (msg.type) {
+      case 'settings':
+        applySettings(A.sanitizeSettings(msg.settings));
+        markSettingsLoaded();
+        break;
+      case 'detectorOrigin':
+        if (typeof msg.origin === 'string' && !state.detectorOrigin) state.detectorOrigin = msg.origin;
+        break;
+      case 'trigger':
+        if (A.TRIGGERS.includes(msg.event)) trigger(msg.event);
+        break;
+      case 'captureRoom': captureRoom(); break;
+      case 'clearRoom': clearRoom(); log('room photo cleared'); break;
+      default: break;
+    }
+  });
+
+  let published = '';
+  setInterval(() => {
+    const next = JSON.stringify(snapshot());
+    if (next === published) return;
+    published = next;
+    channel.post({ type: 'state', state: JSON.parse(next) });
+  }, PUBLISH_MS);
 
   const KEYS = {
     KeyS: () => ['snap'],
@@ -397,7 +500,6 @@
     KeyC: () => ['cinema'],
     KeyF: () => ['facepalm'],
     KeyD: () => { state.debug = !state.debug; return []; },
-    KeyX: () => { state.enabled = !state.enabled; log(state.enabled ? 'effects on' : 'effects off'); return []; },
   };
   window.addEventListener('keydown', (e) => {
     const action = e.altKey && e.shiftKey && KEYS[e.code];
@@ -414,8 +516,8 @@
     setSetting,
     get hasCamera() { return controller.hasCamera; },
     get roomPhoto() { return renderer.roomPhoto; },
-    captureRoom: () => { state.wantPhoto = true; },
-    clearRoom: () => { renderer.clearRoomPhoto(); log('room photo cleared'); },
+    captureRoom,
+    clearRoom,
     get mode() { return renderer.mode; },
     get log() { return state.log; },
     get audio() { return state.audio; },

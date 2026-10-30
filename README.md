@@ -24,17 +24,20 @@ If **Load unpacked** is greyed out, your Chrome is managed by your organisation 
 
 ## Using it
 
-A **✨ Plot Twist** panel appears on the Meet page once your camera is on. Drag it by its title or collapse it with **–**.
+Click the **Plot Twist** icon in Chrome's toolbar while you're in a Meet call (pin it from the puzzle-piece menu). The popup has the effect buttons, the room photo, the auto-detect settings and a master **Effects** switch. It talks only to the active tab, so open it from the Meet tab.
 
-- **📷 Capture empty room** (recommended before you vanish): click it, step out of frame during the 5-second countdown, and it takes one photo of the room without you. After the dust settles, a vanish then fades quickly (about 1 s) into this photo, so no outline or halo of you is left. **Return** fades back to live and re-forms you. The photo is kept in memory for this tab only: it's never saved to disk, and it's deleted when your camera stops, when you leave or reload, or when you click **✕**.
+- **Effects switch** (saved): when off, Meet gets your camera untouched, and no detector or mic tap is created. Switching it off during a call takes effect immediately (frames pass straight through). Switching it back on applies the next time your camera starts: turn the camera off and on in Meet (the popup tells you).
+
+- **📷 Capture empty room** (recommended before you vanish): click it, step out of frame during the 5-second countdown (you can close the popup; the countdown keeps running in the Meet tab), and it takes one photo of the room without you. After the dust settles, a vanish then fades quickly (about 1 s) into this photo, so no outline or halo of you is left. **Return** fades back to live and re-forms you. The photo is kept in memory for this tab only: it's never saved to disk, and it's deleted when your camera stops, when you leave or reload, or when you click **✕**.
 - **Without a room photo**, a vanish still erases only you and keeps the rest of the frame live. The space where you were is filled with the room as the camera has seen it. Lean left and right once so it can see behind you.
+- **Auto-detect** checkboxes are saved with your Chrome profile (`chrome.storage.sync`), so you set them once.
 - **Auto-detect snaps / facepalm** (off by default): turn these on to trigger the effects from gestures instead of buttons. Auto snap detection also opens a second, unprocessed stream of your mic to hear snap clicks; with it off, the extension doesn't touch your mic.
 - **Auto-detect Cinema gesture** (on by default): both hands up, palms showing → Absolute Cinema. Untick it to use only the button.
 - Effects are drawn on the video you send. Meet mirrors your self-view, so "CINEMA" looks backwards to you but reads correctly for everyone else.
 
 ### Adding an effect
 
-Add an entry to `createActions` in `src/actions.js` (`id`, `icon`, `label`, `enabled`, `run`). The panel builds its buttons from that list, so a new effect appears there automatically. Draw it in `src/effects.js` (see `drawMoney` for an example).
+Add an entry to `createActions` in `src/actions.js` (`id`, `icon`, `label`, `enabled`, `run`). The popup builds its buttons from that list, so a new effect appears there automatically. Draw it in `src/effects.js` (see `drawMoney` for an example).
 
 ### Keyboard shortcuts (backup and testing)
 
@@ -45,7 +48,6 @@ Add an entry to `createActions` in `src/actions.js` (`id`, `icon`, `label`, `ena
 | Alt+Shift+C | Absolute Cinema |
 | Alt+Shift+F | Facepalm |
 | Alt+Shift+D | Debug overlay: hand points, face box, pinch ratio, last event |
-| Alt+Shift+X | Turn all effects off / on |
 
 ### Your own facepalm image
 
@@ -63,16 +65,18 @@ mic ───► click detector ────────────────
 
 - `src/inject.js` runs in Meet's page before Meet loads. It replaces `navigator.mediaDevices.getUserMedia` so Meet receives a processed camera track (`MediaStreamTrackProcessor` → canvas → `MediaStreamTrackGenerator`). This keeps working when the Meet tab is in the background. When auto-detect snaps is on, it also opens a second, raw stream of the same mic to hear snap clicks: Chrome's default noise suppression strips most of a snap's click.
 - `detector/` runs MediaPipe's hand landmarker, face detector and selfie segmenter inside an extension iframe. Meet's own security policy would block MediaPipe's wasm runtime if it ran in the page. The person mask is hard-edged and slightly enlarged, so none of you leaks into the saved room image.
-- `src/actions.js` lists the effects the panel offers and which gestures may trigger them automatically. `src/panel.js` is the floating panel.
+- `src/actions.js` lists the effects the popup offers, which gestures may trigger them automatically, and the settings. `popup/` is the toolbar popup.
+- `src/bridge.js` (isolated world) connects the popup and `chrome.storage` to `src/inject.js`. Chrome extension APIs aren't available in Meet's page world, so it relays over `src/channel.js`: DOM events on names that include a random per-page token, handed over before Meet's scripts run. Chrome injects a file into only one world, so the bridge loads copies of the shared modules from `src/isolated/` (regenerate them with `node dev/tools/build-isolated.js`; a test fails if they're stale).
 - `src/gestures.js` turns landmarks and mic clicks into events (`snap`, `doubleSnap`, `cinema`, `facepalm`). It's pure logic and covered by unit tests.
 - `src/background.js` builds the empty-room image. `src/vanish.js` erases the person and runs the dust, which affects only the person. `src/effects.js` draws the cinema, facepalm and money effects.
 
-Nothing leaves your machine. All detection runs locally, and the extension requests no permissions beyond running on `meet.google.com`.
+Nothing leaves your machine. All detection runs locally. The extension runs only on `meet.google.com` and asks for one permission, `storage`, to remember your settings.
 
 ## Develop
 
 ```bash
-node --test test/gestures.test.js test/background.test.js test/actions.test.js
+node dev/tools/build-isolated.js   # after editing src/actions.js or src/channel.js
+node --test test/*.test.js
 ```
 
 To try it without Meet, serve this folder and open the test page. It uses your webcam, or `?clip=<video url>` to use a video file as the camera:
@@ -81,7 +85,7 @@ To try it without Meet, serve this folder and open the test page. It uses your w
 python3 -m http.server 8000
 ```
 
-Then open http://localhost:8000/dev/harness.html.
+Then open http://localhost:8000/dev/harness.html. It has plain buttons and checkboxes in place of the popup (`dev/harness-bridge.js`).
 
 Tuning values (pinch thresholds, hold times, cooldowns, mic sensitivity) are at the top of `src/gestures.js`.
 

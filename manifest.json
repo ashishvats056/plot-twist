@@ -16,25 +16,49 @@
       "32": "icons/icon-32.png",
       "48": "icons/icon-48.png",
       "128": "icons/icon-128.png"
-    }
+    },
+    "default_popup": "popup/popup.html"
   },
+  "permissions": [
+    "storage"
+  ],
   "content_scripts": [
     {
-      "matches": ["https://meet.google.com/*"],
-      "js": ["src/bridge.js"],
+      "matches": [
+        "https://meet.google.com/*"
+      ],
+      "js": [
+        "src/isolated/actions.js",
+        "src/isolated/channel.js",
+        "src/bridge.js"
+      ],
       "run_at": "document_start"
     },
     {
-      "matches": ["https://meet.google.com/*"],
-      "js": ["src/gestures.js", "src/actions.js", "src/background.js", "src/vanish.js", "src/effects.js", "src/inject.js", "src/panel.js"],
+      "matches": [
+        "https://meet.google.com/*"
+      ],
+      "js": [
+        "src/channel.js",
+        "src/gestures.js",
+        "src/actions.js",
+        "src/background.js",
+        "src/vanish.js",
+        "src/effects.js",
+        "src/inject.js"
+      ],
       "run_at": "document_start",
       "world": "MAIN"
     }
   ],
   "web_accessible_resources": [
     {
-      "resources": ["detector/detector.html"],
-      "matches": ["https://meet.google.com/*"]
+      "resources": [
+        "detector/detector.html"
+      ],
+      "matches": [
+        "https://meet.google.com/*"
+      ]
     }
   ],
   "content_security_policy": {
