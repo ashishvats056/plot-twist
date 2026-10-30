@@ -36,13 +36,60 @@ async function create(Task, fileset, modelPath, extra) {
   throw lastError;
 }
 
-async function loadFacepalmImage() {
-  for (const name of ['facepalm.png', 'facepalm.jpg', 'facepalm.jpeg', 'facepalm.webp']) {
+const MAX_GIF_FRAMES = 120; // ~6 s at 20 fps; longer GIFs are cut
+const MAX_SIDE = 960; // decoded frames are scaled down to save memory
+
+// GIF delays are in microseconds; browsers play 0–10 ms delays at 100 ms.
+const gifFrameMs = (us) => {
+  const ms = Math.round((Number(us) || 0) / 1000);
+  return ms <= 10 ? 100 : ms;
+};
+
+async function scaled(image, w, h) {
+  const k = Math.min(1, MAX_SIDE / Math.max(w, h));
+  return createImageBitmap(image, { resizeWidth: Math.round(w * k), resizeHeight: Math.round(h * k) });
+}
+
+// Animated GIF → [{ bitmap, ms }] via the built-in ImageDecoder.
+async function decodeGif(blob) {
+  const decoder = new ImageDecoder({ data: blob.stream(), type: 'image/gif' });
+  try {
+    await decoder.tracks.ready;
+    await decoder.completed;
+    const count = Math.min(MAX_GIF_FRAMES, decoder.tracks.selectedTrack.frameCount);
+    const frames = [];
+    for (let i = 0; i < count; i++) {
+      const { image } = await decoder.decode({ frameIndex: i });
+      try {
+        frames.push({ bitmap: await scaled(image, image.displayWidth, image.displayHeight), ms: gifFrameMs(image.duration) });
+      } finally {
+        image.close();
+      }
+    }
+    return frames;
+  } finally {
+    decoder.close();
+  }
+}
+
+// The facepalm overlay: assets/facepalm.gif (animated) or a still image.
+// Returns { frames: [{ bitmap, ms }] }, or null for the emoji placeholder.
+async function loadFacepalmMedia() {
+  for (const name of ['facepalm.gif', 'facepalm.png', 'facepalm.jpg', 'facepalm.jpeg', 'facepalm.webp']) {
     try {
       const res = await fetch(asset(`assets/${name}`));
-      if (res.ok) return await createImageBitmap(await res.blob());
+      if (!res.ok) continue;
+      const blob = await res.blob();
+      if (name.endsWith('.gif') && typeof ImageDecoder === 'function') {
+        const frames = await decodeGif(blob);
+        if (frames.length) return { frames };
+      }
+      const still = await createImageBitmap(blob);
+      const bitmap = await scaled(still, still.width, still.height);
+      still.close();
+      return { frames: [{ bitmap, ms: Infinity }] };
     } catch {
-      // not present; try the next name
+      // not present or not decodable; try the next name
     }
   }
   return null;
@@ -131,7 +178,7 @@ addEventListener('message', (e) => {
   parentOrigin = e.origin;
   if (msg.type === 'hello') {
     ready.then(
-      (assets) => post({ type: 'ready', ...assets }), // ImageBitmap is cloned, so repeat hellos are safe
+      (assets) => post({ type: 'ready', ...assets }), // bitmaps are cloned, so repeat hellos are safe
       (err) => post({ type: 'error', message: String(err && err.message || err) }),
     );
     return;
@@ -169,7 +216,7 @@ const ready = (async () => {
       outputConfidenceMasks: true,
       outputCategoryMask: false,
     }),
-    loadFacepalmImage(),
+    loadFacepalmMedia(),
   ]);
   models = { hands, face, segmenter };
   return { facepalm };

@@ -109,7 +109,7 @@
         if (!ready) log('detector ready');
         ready = true;
         clearInterval(helloTimer);
-        if (m.facepalm) renderer.setFacepalmImage(m.facepalm);
+        if (m.facepalm) renderer.setFacepalmMedia(m.facepalm);
       } else if (m.type === 'error') {
         log(`detector error: ${m.message}`);
       } else if (m.type === 'result') {

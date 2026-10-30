@@ -51,7 +51,13 @@ Add an entry to `createActions` in `src/actions.js` (`id`, `icon`, `label`, `ena
 
 ### Your own facepalm image
 
-Save an image as `assets/facepalm.png` (`.jpg` and `.webp` also work). Then click the reload icon on the extension in `chrome://extensions` and reload the Meet tab. Without an image, a 🤦 emoji placeholder is shown.
+Save an animated GIF as `assets/facepalm.gif`, or a still image as `assets/facepalm.png` (`.jpg` and `.webp` also work). Then click the reload icon on the extension in `chrome://extensions` and reload the Meet tab.
+
+- An **animated GIF** plays once, full frame, as a reaction cut-away, then fades out. The effect lasts as long as the GIF (between 1.5 and 6 s). Frames are decoded once in the detector with Chrome's built-in `ImageDecoder` and scaled to at most 960 px; GIFs longer than 120 frames are cut.
+- A **still image** is blended over you for 2.5 s.
+- Without either, a 🤦 emoji placeholder is shown.
+
+Only bundle an image you have the rights to. `assets/facepalm.gif` is git-ignored here because the local one is a film clip.
 
 ## How it works
 

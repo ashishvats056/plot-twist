@@ -3,7 +3,11 @@
   'use strict';
 
   const CINEMA_MS = 3000;
-  const FACEPALM_MS = 2500;
+  const FACEPALM_MS = 2500; // emoji or still image
+  const FACEPALM_MIN_MS = 1500; // an animated facepalm plays once, held within these bounds
+  const FACEPALM_MAX_MS = 6000;
+  const STILL_ALPHA = 0.55; // a still image is blended over you
+  const ANIMATED_ALPHA = 1; // an animated one is a full-frame cut-away, like a meme reaction
   const MONEY_MS = 4500;
   const MONEY_NOTES = 70;
   const FADE_MS = 250;
@@ -14,6 +18,37 @@
   };
   const rand = (a, b) => a + Math.random() * (b - a);
   const fade = (elapsed, total) => Math.max(0, Math.min(1, elapsed / FADE_MS, (total - elapsed) / FADE_MS));
+
+  // Facepalm media: { frames: [{ bitmap, ms }] }. A still image is one frame
+  // lasting forever. Pure helpers below are unit-tested.
+  function mediaDuration(media) {
+    return media ? media.frames.reduce((sum, f) => sum + f.ms, 0) : 0;
+  }
+
+  // The frame showing `elapsed` ms after the start. Plays once, then holds the
+  // last frame (a looping facepalm restarting mid-fade looks broken).
+  function mediaFrameAt(media, elapsed) {
+    if (!media || !media.frames.length) return null;
+    let t = Math.max(0, elapsed);
+    for (const f of media.frames) {
+      if (t < f.ms) return f;
+      t -= f.ms;
+    }
+    return media.frames[media.frames.length - 1];
+  }
+
+  function facepalmDuration(media) {
+    const d = mediaDuration(media);
+    if (!media || !Number.isFinite(d)) return FACEPALM_MS;
+    return Math.min(FACEPALM_MAX_MS, Math.max(FACEPALM_MIN_MS, d));
+  }
+
+  // ImageDecoder reports GIF delays in microseconds. Browsers play 0–10 ms
+  // delays at 100 ms, and GIFs are authored for that.
+  function gifFrameMs(us) {
+    const ms = Math.round((Number(us) || 0) / 1000);
+    return ms <= 10 ? 100 : ms;
+  }
 
   function drawCover(ctx, img, w, h) {
     const s = Math.max(w / img.width, h / img.height);
@@ -51,7 +86,7 @@
     let notes = [];
     const noteSprite = makeNoteSprite();
     const s = { cinemaAt: -Infinity, facepalmAt: -Infinity, moneyAt: -Infinity };
-    let facepalmImg = null;
+    let facepalmMedia = null;
 
     function drawCinema(ctx, now) {
       const e = now - s.cinemaAt;
@@ -80,12 +115,14 @@
 
     function drawFacepalm(ctx, now) {
       const e = now - s.facepalmAt;
-      if (e < 0 || e > FACEPALM_MS) return;
-      const a = fade(e, FACEPALM_MS);
+      const total = facepalmDuration(facepalmMedia);
+      if (e < 0 || e > total) return;
+      const a = fade(e, total);
+      const frame = mediaFrameAt(facepalmMedia, e);
       ctx.save();
-      if (facepalmImg) {
-        ctx.globalAlpha = 0.55 * a;
-        drawCover(ctx, facepalmImg, w, h);
+      if (frame) {
+        ctx.globalAlpha = (facepalmMedia.frames.length > 1 ? ANIMATED_ALPHA : STILL_ALPHA) * a;
+        drawCover(ctx, frame.bitmap, w, h);
       } else {
         ctx.globalAlpha = 0.9 * a;
         ctx.textAlign = 'center';
@@ -157,7 +194,12 @@
     return {
       get mode() { return vanish.mode; },
       debugCanvases: () => vanish.debugCanvases(),
-      setFacepalmImage(img) { facepalmImg = img; },
+      // media: { frames: [{ bitmap, ms }] } from the detector, or null for the emoji.
+      setFacepalmMedia(media) {
+        const ok = media && Array.isArray(media.frames) && media.frames.length
+          && media.frames.every((f) => f && f.bitmap && f.ms > 0);
+        facepalmMedia = ok ? media : null;
+      },
       setMask: (source, mask, sw, sh, learn, hands) => vanish.setMask(source, mask, sw, sh, learn, hands),
       vanish: (now, source, sw, sh) => vanish.vanish(now, source, sw, sh),
       reappear: (now) => vanish.reappear(now),
@@ -178,5 +220,5 @@
     };
   }
 
-  root.PlotTwistEffects = { createRenderer };
+  root.PlotTwistEffects = { createRenderer, mediaFrameAt, mediaDuration, facepalmDuration, gifFrameMs };
 })(globalThis);
