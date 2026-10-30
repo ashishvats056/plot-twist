@@ -8,3 +8,5 @@ node_modules/
 # Facepalm overlay: a copyrighted film clip, kept local only (not for the public repo or store zip)
 assets/facepalm.gif
 dist/
+# E2E artefacts (fake camera video, browser profiles, contact sheets)
+dev/e2e/out/
