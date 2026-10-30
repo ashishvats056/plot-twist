@@ -1,7 +1,7 @@
 // Replays a raw landmark recording (from __plottwist.exportRaw + the guided prompter) through the gesture engine, step by step.
 // Usage: node dev/tools/replay-recording.js src/gestures.js dev/recordings/recording-1-tuning.json [-v]
 const fs = require('fs');
-const G = require(process.argv[2]);
+const G = require(require('path').resolve(process.argv[2]));
 const data = JSON.parse(fs.readFileSync(process.argv[3], 'utf8'));
 const verbose = process.argv[4] === '-v';
 const toHand = (h) => ({ handedness: h.s, landmarks: h.l.map(([x, y]) => ({ x, y })) });

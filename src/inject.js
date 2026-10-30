@@ -9,7 +9,12 @@
   const A = window.PlotTwistActions;
   const C = window.PlotTwistChannel;
   const md = navigator.mediaDevices;
-  if (window.__plottwist || !G || !E || !A || !C || !md || !md.getUserMedia) return;
+  if (!G || !E || !A || !C || !md || !md.getUserMedia) return;
+
+  // Dev tools (window.__plottwist, the landmark/mic recorders, the debug
+  // overlay) exist only on the local harness. On Meet, page scripts share this
+  // world and could read them.
+  const DEV = location.protocol === 'http:' && ['localhost', '127.0.0.1'].includes(location.hostname);
 
   const IFRAME_ID = 'plottwist-detector';
   const DETECT_WIDTH = 640; // larger input finds small, fast snapping hands more often
@@ -25,11 +30,18 @@
   const CAPTURE_COUNTDOWN_S = 5;
   const THUMB_W = 192;
   const THUMB_H = 108;
-  const REC_MS = 60000; // debug recorder keeps the last 60 s
+  const REC_MS = 60000; // dev recorder keeps the last 60 s
 
   const origGetUserMedia = md.getUserMedia.bind(md);
   const engine = G.createGestureEngine();
   const renderer = E.createRenderer();
+  // Everything needed is captured above; don't leave the modules where Meet's
+  // scripts can reach them.
+  if (!DEV) {
+    for (const name of ['PlotTwistGestures', 'PlotTwistEffects', 'PlotTwistActions', 'PlotTwistChannel', 'PlotTwistVanish', 'PlotTwistBackground']) {
+      delete window[name];
+    }
+  }
   const state = {
     settings: { ...A.DEFAULT_SETTINGS },
     cameras: 0, // live processed camera tracks
@@ -56,6 +68,7 @@
   }
 
   function remember(key, item) {
+    if (!DEV) return;
     const kept = state.rec[key].filter((x) => item.t - x.t <= REC_MS);
     state.rec = { ...state.rec, [key]: [...kept, item] };
   }
@@ -116,13 +129,13 @@
         busySince = null;
         if (m.error) log(`detect error: ${m.error}`);
         const now = performance.now();
-        state.lastResult = m;
-        remember('raw', {
+        if (DEV) state.lastResult = m;
+        if (DEV) remember('raw', {
           t: Math.round(now),
           h: m.hands.map((h) => ({ s: h.handedness, l: h.landmarks.map((p) => [+p.x.toFixed(3), +p.y.toFixed(3)]) })),
           f: m.face && Object.fromEntries(Object.entries(m.face).map(([k, v]) => [k, v == null ? v : +v.toFixed(3)])),
         });
-        remember('frames', {
+        if (DEV) remember('frames', {
           t: Math.round(now),
           p: m.hands.map((h) => G.pinchRatio(h.landmarks).toFixed(2) + (G.isMiddleFolded(h.landmarks) ? 'f' : '')),
           f: m.face ? 1 : 0,
@@ -215,7 +228,7 @@
         detCtx.drawImage(source, 0, 0, det.width, det.height);
         if (detector.send(det.transferToImageBitmap(), now)) segCtx.drawImage(source, 0, 0, w, h);
       }
-      renderer.draw(ctx, source, w, h, now, state.debug ? debugInfo() : null);
+      renderer.draw(ctx, source, w, h, now, DEV && state.debug ? debugInfo() : null);
       return out;
     };
   }
@@ -334,7 +347,7 @@
         const now = performance.now();
         const hit = clicks.process(e.inputBuffer.getChannelData(0), now);
         const a = clicks.last;
-        if (a && a.peak > 0.03) {
+        if (DEV && a && a.peak > 0.03) {
           remember('audio', { t: Math.round(now), pk: +a.peak.toFixed(3), of: +a.overFloor.toFixed(1), cr: +a.crest.toFixed(1), hf: +a.hf.toFixed(2) });
         }
         if (hit) {
@@ -499,7 +512,7 @@
     KeyM: () => ['doubleSnap'],
     KeyC: () => ['cinema'],
     KeyF: () => ['facepalm'],
-    KeyD: () => { state.debug = !state.debug; return []; },
+    ...(DEV ? { KeyD: () => { state.debug = !state.debug; return []; } } : {}),
   };
   window.addEventListener('keydown', (e) => {
     const action = e.altKey && e.shiftKey && KEYS[e.code];
@@ -509,6 +522,7 @@
     handle(action(), performance.now(), 'manual');
   }, true);
 
+  if (!DEV) return;
   window.__plottwist = {
     trigger,
     actions: A.createActions(controller),

@@ -47,7 +47,7 @@ Add an entry to `createActions` in `src/actions.js` (`id`, `icon`, `label`, `ena
 | Alt+Shift+M | Money rain |
 | Alt+Shift+C | Absolute Cinema |
 | Alt+Shift+F | Facepalm |
-| Alt+Shift+D | Debug overlay: hand points, face box, pinch ratio, last event |
+| Alt+Shift+D | Debug overlay (local harness only) |
 
 ### Your own facepalm image
 
@@ -97,11 +97,15 @@ Tuning values (pinch thresholds, hold times, cooldowns, mic sensitivity) are at 
 
 ## Troubleshooting
 
-In the Meet tab, open DevTools → Console and run `__plottwist.log`.
-- No `detector ready` → the iframe didn't load. Check that the extension is enabled and reload the tab.
-- `listening on processed mic` → Chrome refused the raw mic, so quieter snaps may be missed.
-- `mic:off` in the debug overlay → the camera alone detects snaps. It works, but expect more misses and accidental triggers.
+- The popup says **"Open a Meet call with your camera on"** while you're in a call → the Meet tab was opened before the extension was installed or reloaded. Reload the Meet tab.
+- **"Turn your camera off and on again"** → effects were switched on during a call; the next camera start picks them up.
+- Effects don't appear → check that the extension is enabled, then reload it in `chrome://extensions` **and** reload the Meet tab (Chrome only gives a tab new content scripts on page load).
 - Snaps get missed → in `src/gestures.js`, lower `minPeak` or `minHfRatio` in `createAudioTransientDetector`, raise `handRecentMs`, or lower `pressHoldMs`. Snaps fire by accident → do the opposite.
-- `__plottwist.dump()` returns the last 60 s of pinch measurements and mic peaks; `__plottwist.exportRaw()` returns the raw hand landmarks, for replaying through `src/gestures.js` when tuning.
+
+On Meet the extension exposes nothing to the page. For debugging, use the local harness (`dev/harness.html` on `localhost`): there, `__plottwist.log` shows the event log, Alt+Shift+D toggles the landmark overlay, `__plottwist.dump()` returns the last 60 s of pinch measurements and mic peaks, and `__plottwist.exportRaw()` returns raw hand landmarks for replaying through `src/gestures.js`:
+
+```bash
+node dev/tools/replay-recording.js "$PWD/src/gestures.js" dev/recordings/<file>.json [-v]
+```
 
 Bundled: MediaPipe Tasks Vision 0.10.35 (Apache-2.0, `vendor/`), and the hand landmarker, BlazeFace short-range and selfie segmenter models (`models/`).
