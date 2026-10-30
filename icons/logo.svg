@@ -7,12 +7,16 @@
     </linearGradient>
   </defs>
   <rect width="128" height="128" rx="30" fill="url(#pt-bg)"/>
-  <g fill="none" stroke="#1B1424" stroke-width="15" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M30 45 C30 31 41 23 53 23 C66 23 76 31 76 43 C76 55 64 59 58 65 C55 68 54 71 54 77"/>
-    <path d="M98 25 L94 76"/>
+  <!-- video camera: body + lens wedge -->
+  <rect x="14" y="30" width="72" height="68" rx="16" fill="#1B1424"/>
+  <path d="M90 56 L116 38 V90 L90 72 Z" fill="#1B1424" stroke="#1B1424" stroke-width="6" stroke-linejoin="round"/>
+  <!-- "?!" plot-twist mark on the camera -->
+  <g fill="none" stroke="#FFFFFF" stroke-width="9" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M31 51 C31 44 36 40 42 40 C49 40 53 44 53 50 C53 56 47 58 44 61 C42.5 62.5 42 64 42 67"/>
+    <path d="M68 41 L66 67"/>
   </g>
-  <g fill="#1B1424">
-    <circle cx="54" cy="100" r="9"/>
-    <circle cx="92.5" cy="100" r="9"/>
+  <g fill="#FFFFFF">
+    <circle cx="42" cy="82" r="5.5"/>
+    <circle cx="65.2" cy="82" r="5.5"/>
   </g>
 </svg>
