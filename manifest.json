@@ -3,41 +3,38 @@
   "name": "Plot Twist",
   "version": "0.1.0",
   "description": "Drop a plot twist into your Google Meet video: dissolve into dust and vanish, make it rain money, go full cinema, facepalm.",
+  "icons": {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
+  "action": {
+    "default_title": "Plot Twist",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "32": "icons/icon-32.png",
+      "48": "icons/icon-48.png",
+      "128": "icons/icon-128.png"
+    }
+  },
   "content_scripts": [
     {
-      "matches": [
-        "https://meet.google.com/*"
-      ],
-      "js": [
-        "src/bridge.js"
-      ],
+      "matches": ["https://meet.google.com/*"],
+      "js": ["src/bridge.js"],
       "run_at": "document_start"
     },
     {
-      "matches": [
-        "https://meet.google.com/*"
-      ],
-      "js": [
-        "src/gestures.js",
-        "src/actions.js",
-        "src/background.js",
-        "src/vanish.js",
-        "src/effects.js",
-        "src/inject.js",
-        "src/panel.js"
-      ],
+      "matches": ["https://meet.google.com/*"],
+      "js": ["src/gestures.js", "src/actions.js", "src/background.js", "src/vanish.js", "src/effects.js", "src/inject.js", "src/panel.js"],
       "run_at": "document_start",
       "world": "MAIN"
     }
   ],
   "web_accessible_resources": [
     {
-      "resources": [
-        "detector/detector.html"
-      ],
-      "matches": [
-        "https://meet.google.com/*"
-      ]
+      "resources": ["detector/detector.html"],
+      "matches": ["https://meet.google.com/*"]
     }
   ],
   "content_security_policy": {

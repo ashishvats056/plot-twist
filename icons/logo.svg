@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <title>Plot Twist</title>
+  <defs>
+    <linearGradient id="pt-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FFC233"/>
+      <stop offset="1" stop-color="#FF4F5E"/>
+    </linearGradient>
+  </defs>
+  <rect width="128" height="128" rx="30" fill="url(#pt-bg)"/>
+  <g fill="none" stroke="#1B1424" stroke-width="15" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M30 45 C30 31 41 23 53 23 C66 23 76 31 76 43 C76 55 64 59 58 65 C55 68 54 71 54 77"/>
+    <path d="M98 25 L94 76"/>
+  </g>
+  <g fill="#1B1424">
+    <circle cx="54" cy="100" r="9"/>
+    <circle cx="92.5" cy="100" r="9"/>
+  </g>
+</svg>
