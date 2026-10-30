@@ -1,0 +1,7 @@
+# Raw hand/face landmark recordings of the developer: useful for tuning, never publish
+dev/recordings/
+# Logs written by local tooling/hooks, not part of the project
+tmp/
+.DS_Store
+node_modules/
+*.zip

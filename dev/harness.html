@@ -1,0 +1,51 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Plot Twist harness</title>
+<style>
+  body { font: 14px system-ui, sans-serif; background: #111; color: #eee; margin: 0; padding: 16px; }
+  video { width: 100%; max-width: 960px; background: #000; display: block; }
+  video[hidden] { display: none; }
+  button { margin: 8px 8px 8px 0; padding: 6px 12px; }
+  pre { background: #222; padding: 8px; max-height: 240px; overflow: auto; }
+</style>
+<!--
+  Local test page: serve the extension folder over http (see README) and open
+  dev/harness.html. Uses your webcam, or ?clip=<url> to use a video file as the camera.
+-->
+<iframe id="plottwist-detector" src="../detector/detector.html" style="position:fixed;width:1px;height:1px;opacity:0;border:0"></iframe>
+<video id="clip" muted playsinline hidden></video>
+<script>
+  const clipUrl = new URLSearchParams(location.search).get('clip');
+  if (clipUrl) {
+    navigator.mediaDevices.getUserMedia = async () => {
+      const v = document.getElementById('clip');
+      if (!v.src) v.src = clipUrl; // called again for the raw mic: don't reload the clip
+      await v.play();
+      return v.captureStream();
+    };
+  }
+</script>
+<script src="../src/gestures.js"></script>
+<script src="../src/background.js"></script>
+<script src="../src/vanish.js"></script>
+<script src="../src/effects.js"></script>
+<script src="../src/actions.js"></script>
+<script src="../src/inject.js"></script>
+<script src="../src/panel.js"></script>
+<button id="start">Start camera</button>
+<button onclick="__plottwist.trigger('snap')">Snap</button>
+<button onclick="__plottwist.trigger('doubleSnap')">Double snap</button>
+<button onclick="__plottwist.trigger('cinema')">Cinema</button>
+<button onclick="__plottwist.trigger('facepalm')">Facepalm</button>
+<span>Alt+Shift+D toggles the landmark overlay.</span>
+<video id="out" autoplay muted playsinline></video>
+<pre id="log"></pre>
+<script>
+  document.getElementById('start').onclick = async () => {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 1280, height: 720 }, audio: true });
+    document.getElementById('out').srcObject = stream;
+  };
+  setInterval(() => {
+    document.getElementById('log').textContent = `mode: ${__plottwist.mode}  mic: ${__plottwist.audio}\n${__plottwist.log.slice().reverse().join('\n')}`;
+  }, 250);
+</script>
