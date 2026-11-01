@@ -1,0 +1,44 @@
+/* The facepalm editor window (shares popup.css). */
+body.editor { width: auto; min-width: 360px; }
+.editor .card { max-width: 440px; margin: 0 auto; padding: 16px; gap: 14px; }
+
+.current { display: flex; align-items: center; gap: 12px; padding: 10px; border-radius: 12px; background: var(--tile); }
+.preview { flex: none; display: grid; place-items: center; width: 72px; height: 72px; border-radius: 10px;
+  background: var(--accent-soft); font-size: 44px; line-height: 1; overflow: hidden; }
+.preview img { width: 100%; height: 100%; object-fit: cover; }
+.current-text { display: grid; gap: 2px; min-width: 0; }
+.current-text strong { font-size: 13px; }
+.current-text small { color: var(--muted); font-size: 11.5px; }
+.link-btn { justify-self: start; margin-top: 2px; padding: 0; border: 0; background: none; color: var(--accent);
+  font-size: 12px; font-weight: 600; cursor: pointer; }
+.link-btn[hidden] { display: none; }
+
+.pick { display: grid; gap: 8px; }
+.pick h2 { margin: 0; font-size: 11px; font-weight: 600; letter-spacing: 0.6px; text-transform: uppercase; color: var(--muted); }
+.emoji-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.emoji-row button { width: 38px; height: 38px; padding: 0; border: 0; border-radius: 10px; background: var(--tile);
+  font-size: 22px; line-height: 1; cursor: pointer; }
+.emoji-row button:hover { background: var(--tile-hover); }
+.emoji-row button[aria-pressed="true"] { box-shadow: inset 0 0 0 2px var(--accent); background: var(--accent-soft); }
+
+.field { display: flex; gap: 8px; margin: 0; }
+.field input { flex: 1; min-width: 0; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px;
+  background: var(--bg); color: var(--fg); font: inherit; }
+.field input:focus-visible { outline: 2px solid var(--focus); outline-offset: 0; border-color: transparent; }
+.primary { flex: none; padding: 8px 14px; border: 0; border-radius: 10px; background: var(--accent); color: var(--accent-fg);
+  font-weight: 600; cursor: pointer; }
+.primary:hover:not(:disabled) { background: color-mix(in srgb, var(--accent) 88%, #000); }
+.primary:disabled { opacity: 0.5; cursor: default; }
+
+.drop { position: relative; display: grid; gap: 2px; justify-items: center; padding: 14px 10px; border: 1.5px dashed var(--line);
+  border-radius: 12px; text-align: center; cursor: pointer; }
+.drop:hover, .drop.over { border-color: var(--accent); background: var(--accent-soft); }
+.drop:focus-within { outline: 2px solid var(--focus); outline-offset: 2px; }
+.drop input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.drop strong { color: var(--accent); }
+.drop small, .note { color: var(--muted); font-size: 11.5px; }
+
+.msg { margin: 0; min-height: 1.4em; font-size: 12px; color: var(--muted); }
+.msg[data-tone="ok"] { color: var(--ok); }
+.msg[data-tone="error"] { color: #d93025; }
+@media (prefers-color-scheme: dark) { .msg[data-tone="error"] { color: #f28b82; } }

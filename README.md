@@ -8,7 +8,7 @@
 | **💨 Vanish** button | You dissolve into dust and vanish |
 | **💨 Return** button | You reassemble |
 | **💸 Money rain** button | Money rains down |
-| **🤦 Facepalm** button | A cartoon of you facepalming (or the 🤦 emoji) |
+| **🤦 Facepalm** button | A cartoon of you facepalming (or the 🤦 emoji), or your own emoji/picture/GIF (hover, ✎) |
 | **🎬 Cinema** button | Absolute Cinema without raising your hands |
 
 Click the button while you act out the gesture (snap, facepalm), and it looks like the gesture did it.
@@ -54,13 +54,22 @@ Add an entry to `createActions` in `src/actions.js` (`id`, `icon`, `label`, `ena
 
 By default the facepalm is a round cartoon sticker of your own face, with a cartoon hand slapping your forehead. About 1.5 s after your camera starts, the extension takes one frame in which the face detector finds your face, crops the face and cartoonises it with canvas filters (flat colour bands and ink outlines). This all happens on your device, with no model download and no network. The cartoon is kept in memory only. It is never saved, and it's deleted when your camera stops, so each camera session makes a new one. Until it's ready, or if no face is found, the facepalm is the 🤦 emoji.
 
-### Your own facepalm image
+### Your own facepalm
 
-Save an animated GIF as `assets/facepalm.gif`, or a still image as `assets/facepalm.png` (`.jpg` and `.webp` also work). Then click the reload icon on the extension in `chrome://extensions` and reload the Meet tab.
+In the popup, hover over **Facepalm** and click the small **✎**. A small window opens where you pick:
+
+- an **emoji** (a few suggestions, or type/paste any),
+- a **picture or GIF** from your computer (GIF, PNG, JPEG or WebP, up to 4 MB; the real file type is checked), or
+- a **link** to one. Chrome asks you to allow that one site, the picture is downloaded once, and the access is removed straight after. The link is never fetched again.
+
+It is saved with `chrome.storage.local` (this device only, not synced) and takes effect at once, even in a call that's already running. **Use the default** goes back to the cartoon.
+
+For local builds you can also bundle one: save an animated GIF as `assets/facepalm.gif`, or a still image as `assets/facepalm.png` (`.jpg` and `.webp` also work). Then click the reload icon on the extension in `chrome://extensions` and reload the Meet tab. One set in the popup wins over a bundled one.
 
 - An **animated GIF** plays once, full frame, as a reaction cut-away, then fades out. The effect lasts as long as the GIF (between 1.5 and 6 s). Frames are decoded once in the detector with Chrome's built-in `ImageDecoder` and scaled to at most 960 px; GIFs longer than 120 frames are cut.
 - A **still image** is blended over you for 2.5 s.
-- Without either, you get the cartoon of your face (or the 🤦 emoji).
+- An emoji is drawn big over you for 2.5 s.
+- Without any, you get the cartoon of your face (or the 🤦 emoji).
 
 Only bundle an image you have the rights to. `assets/facepalm.gif` is git-ignored here because the local one is a film clip.
 
@@ -81,7 +90,7 @@ mic ───► click detector ────────────────
 - `src/gestures.js` turns landmarks and mic clicks into events (`snap`, `doubleSnap`, `cinema`, `facepalm`). It's pure logic and covered by unit tests.
 - `src/background.js` builds the empty-background image. `src/vanish.js` erases the person and runs the dust, which affects only the person. `src/effects.js` draws the cinema, facepalm and money effects.
 
-Nothing leaves your machine. All detection runs locally. The extension runs only on `meet.google.com` and asks for one permission, `storage`, to remember your settings.
+Nothing leaves your machine. All detection runs locally. The extension runs only on `meet.google.com` and asks for one permission, `storage`, to remember your settings and your own facepalm. Adding a facepalm from a link asks for access to that one site, used for one download and removed straight after.
 
 ## Develop
 

@@ -95,12 +95,13 @@ let prev = null; window.VIEW = '%VIEW%';
 window.sample = () => {
   const c = document.getElementById('c'), x = c.getContext('2d', { willReadFrequently: true });
   x.drawImage(document.getElementById(window.VIEW), 0, 0, 160, 90);
-  const d = x.getImageData(0, 0, 160, 90).data; let sat = 0, green = 0, diff = 0, edgeGreen = 0, blue = 0, yellow = 0;
+  const d = x.getImageData(0, 0, 160, 90).data; let sat = 0, green = 0, diff = 0, edgeGreen = 0, blue = 0, yellow = 0, magenta = 0;
   for (let i = 0; i < d.length; i += 4) {
     const r = d[i], g = d[i+1], b = d[i+2];
     const px = (i / 4) % 160, py = Math.floor(i / 4 / 160);
     const outside = ((px - 80) / 35) ** 2 + ((py - 49.5) / 45) ** 2 > 1.15;
     if (r > 200 && g > 140 && b < 90 && r - b > 130) yellow++;
+    if (r > 150 && b > 150 && g < 110) magenta++;
     if (b > 180 && r < 70 && g > 60 && g < 130) { blue++; if (inBox(i)) window.__blueIn = (window.__blueIn || 0) + 1; }
     if (outside && Math.abs(r - 95) < 30 && Math.abs(g - 159) < 30 && Math.abs(b - 90) < 30) edgeGreen++;
     sat += Math.max(r, g, b) - Math.min(r, g, b);
@@ -108,7 +109,7 @@ window.sample = () => {
     if (prev) diff += Math.abs(r - prev[i]) + Math.abs(g - prev[i+1]) + Math.abs(b - prev[i+2]);
   }
   prev = d; const n = d.length / 4; const bi = window.__blueIn || 0; window.__blueIn = 0;
-  return { sat: +(sat / n).toFixed(1), green: +(green / n).toFixed(3), edgeGreen: +(edgeGreen / n).toFixed(3), blue: +(blue / n).toFixed(3), blueIn: +(bi / (84 * 84)).toFixed(3), yellow: +(yellow / n).toFixed(3), diff: +(diff / n / 3).toFixed(2), img: c.toDataURL('image/jpeg', 0.7) };
+  return { sat: +(sat / n).toFixed(1), green: +(green / n).toFixed(3), edgeGreen: +(edgeGreen / n).toFixed(3), blue: +(blue / n).toFixed(3), blueIn: +(bi / (84 * 84)).toFixed(3), yellow: +(yellow / n).toFixed(3), magenta: +(magenta / n).toFixed(3), diff: +(diff / n / 3).toFixed(2), img: c.toDataURL('image/jpeg', 0.7) };
 };
 // The cartoon sticker's white rim: share of white pixels on a thin ring at the
 // sticker's edge (radius 0.33 h × 1.045, centred).
@@ -171,12 +172,21 @@ async def main():
                           'max_edge_green': max(s['edgeGreen'] for s in series),
                           'diffs': [s['diff'] for s in series],
                           'max_yellow': max(s['yellow'] for s in series), 'base_yellow': base['yellow'],
+                          'max_magenta': max(s['magenta'] for s in series), 'base_magenta': base['magenta'],
                           'max_ring': max(rings) if rings else 0, 'base_ring': await page.evaluate('ring()') if rings else 0}
             await page.wait_for_timeout(1500)
         if TAG == 'photo':  # capture an empty background first (the "person" stays: fine for timing)
             await q({'type': 'captureBackground'})
             await page.wait_for_timeout(5800)
             res['has_photo'] = (await q({'type': 'getState'}))['state'].get('hasBackgroundPhoto')
+        if TAG == 'custom':  # your own facepalm picture, set mid-call from the editor's storage key
+            await pg.evaluate("""(async () => {
+              const c = new OffscreenCanvas(64, 36); const x = c.getContext('2d'); x.fillStyle = '#ff00ff'; x.fillRect(0, 0, 64, 36);
+              const b = await c.convertToBlob({ type: 'image/png' });
+              const url = await new Promise(r => { const f = new FileReader(); f.onload = () => r(f.result); f.readAsDataURL(b); });
+              await chrome.storage.local.set({ customFacepalm: { kind: 'image', dataUrl: url } });
+            })()""")
+            await page.wait_for_timeout(1500)
         await run('cinema', 'cinema', 2400)
         res['cartoon_ready'] = (await q({'type': 'getState'}))['state'].get('cartoonReady')
         await run('facepalm', 'facepalm', 2400)

@@ -135,3 +135,17 @@ test('photoBlend is a smoothstep', () => {
   assert.ok(Math.abs(photoBlend(2000, 4000) - 0.5) < 1e-9);
   assert.equal(photoBlend(-50, 4000), 0);
 });
+
+test('your own facepalm: emoji or a picture data: URL, nothing else', () => {
+  const S = A.sanitizeCustomFacepalm;
+  assert.deepEqual(S({ kind: 'emoji', emoji: ' 🤦‍♀️ ' }), { kind: 'emoji', emoji: '🤦‍♀️' });
+  assert.equal(S({ kind: 'emoji', emoji: '' }), null);
+  assert.equal(S({ kind: 'emoji', emoji: 'x'.repeat(40) }), null);
+  assert.equal(S({ kind: 'emoji', emoji: 'a\nb' }), null);
+  assert.deepEqual(S({ kind: 'image', dataUrl: 'data:image/gif;base64,R0lGOD==' }), { kind: 'image', dataUrl: 'data:image/gif;base64,R0lGOD==' });
+  assert.equal(S({ kind: 'image', dataUrl: 'data:image/svg+xml;base64,AAAA' }), null, 'no SVG');
+  assert.equal(S({ kind: 'image', dataUrl: 'https://example.com/a.gif' }), null, 'never a live link');
+  assert.equal(S({ kind: 'image', dataUrl: `data:image/png;base64,${'A'.repeat(6e6)}` }), null, 'too big');
+  assert.equal(S({ kind: 'script' }), null);
+  assert.equal(S(null), null);
+});

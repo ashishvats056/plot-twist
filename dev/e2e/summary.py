@@ -21,7 +21,8 @@ if d.get('mode') == 'bgpic':
     extra += f" meet-bg-fills:{'OK' if d['blue_in_vanished'] > 0.35 else 'FAIL'}(person area {d['blue_in_vanished']:.0%} Meet picture)"
 if 'cartoon_ready' in d:
     f = d['facepalm']
-    if d['cartoon_ready'] and f['max_ring'] > 0.6: kind = 'cartoon'
+    if f.get('max_magenta', 0) > 0.3 and f.get('base_magenta', 1) < 0.01: kind = 'custom'
+    elif d['cartoon_ready'] and f['max_ring'] > 0.6: kind = 'cartoon'
     elif not d['cartoon_ready'] and f['max_yellow'] > 0.02 and f['base_yellow'] < 0.005: kind = 'emoji'
     else: kind = f"unclear(ready={d['cartoon_ready']},ring={f['max_ring']},yellow={f['max_yellow']})"
     extra += f" facepalm-kind:{kind}"

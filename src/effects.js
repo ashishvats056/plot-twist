@@ -1,6 +1,7 @@
 // Draws the outgoing video: live frame (via PlotTwistVanish) + cinema, facepalm, money rain.
-// The facepalm is, in order of preference: a local image in assets/ (never in
-// the store build), a cartoon of your face (PlotTwistCartoon), or the 🤦 emoji.
+// The facepalm is, in order of preference: your own (an emoji, picture or GIF
+// set in the facepalm editor), a local image in assets/ (never in the store
+// build), a cartoon of your face (PlotTwistCartoon), or the 🤦 emoji.
 // Everything is drawn on the camera frame (draw). When Google Meet sends a
 // processed copy of it instead (background blur/replacement), redrawOverlays
 // paints the same overlays on Meet's frame too, because Meet's background
@@ -95,6 +96,7 @@
     const noteSprite = makeNoteSprite();
     const s = { cinemaAt: -Infinity, facepalmAt: -Infinity, moneyAt: -Infinity };
     let facepalmMedia = null;
+    let facepalmEmoji = null; // your own emoji, instead of the cartoon
     const cartoon = root.PlotTwistCartoon ? root.PlotTwistCartoon.createCartoonFacepalm() : null;
 
     function drawCinema(ctx, now) {
@@ -132,14 +134,14 @@
       if (frame) {
         ctx.globalAlpha = (facepalmMedia.frames.length > 1 ? ANIMATED_ALPHA : STILL_ALPHA) * a;
         drawCover(ctx, frame.bitmap, w, h);
-      } else if (cartoon && cartoon.ready) {
+      } else if (!facepalmEmoji && cartoon && cartoon.ready) {
         cartoon.draw(ctx, e, w, h, a);
       } else {
         ctx.globalAlpha = 0.9 * a;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.font = `${Math.round(h * 0.45)}px ${EMOJI_FONTS}`;
-        ctx.fillText('\u{1F926}', w / 2, h * 0.5);
+        ctx.fillText(facepalmEmoji || '\u{1F926}', w / 2, h * 0.5);
       }
       ctx.restore();
     }
@@ -202,15 +204,20 @@
     return {
       get mode() { return vanish.mode; },
       debugCanvases: () => vanish.debugCanvases(),
-      // media: { frames: [{ bitmap, ms }] } from the detector, or null for the emoji.
-      setFacepalmMedia(media) {
+      // media: { frames: [{ bitmap, ms }] } from the detector, or null;
+      // emoji: your own emoji, or null. Neither: the cartoon or the 🤦 emoji.
+      setFacepalm(media, emoji) {
         const ok = media && Array.isArray(media.frames) && media.frames.length
           && media.frames.every((f) => f && f.bitmap && f.ms > 0);
+        const old = facepalmMedia;
         facepalmMedia = ok ? media : null;
+        facepalmEmoji = facepalmMedia ? null : (typeof emoji === 'string' && emoji) || null;
+        if (old && old !== facepalmMedia) for (const f of old.frames) if (f.bitmap.close) f.bitmap.close();
       },
       // The cartoon facepalm, built once per camera session from a frame
-      // with your face in it. Not needed when a local image is set.
-      get wantsCartoon() { return !!cartoon && !cartoon.ready && !facepalmMedia; },
+      // with your face in it. Not needed when you set your own.
+      get wantsCartoon() { return !!cartoon && !cartoon.ready && !facepalmMedia && !facepalmEmoji; },
+      get customFacepalm() { return !!(facepalmMedia || facepalmEmoji); },
       get hasCartoon() { return !!cartoon && cartoon.ready; },
       buildCartoon: (source, face, sw, sh, mask) => !!cartoon && cartoon.build(source, face, sw, sh, mask),
       clearCartoon() { if (cartoon) cartoon.clear(); },

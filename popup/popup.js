@@ -36,6 +36,24 @@
     }
   }
 
+  // The facepalm tile gets a small ✎ (shown on hover) that opens the editor for
+  // your own facepalm. A separate window: this popup closes when a file
+  // picker or permission prompt opens.
+  function withEditButton(tile) {
+    const wrap = Object.assign(document.createElement('div'), { className: 'tile-wrap' });
+    const tip = 'Add your own facepalm: emoji, picture or link';
+    const edit = Object.assign(document.createElement('button'), { type: 'button', className: 'tile-edit', textContent: '✎' });
+    edit.id = 'facepalm-edit';
+    edit.dataset.tip = tip;
+    edit.setAttribute('aria-label', tip);
+    edit.addEventListener('click', async () => {
+      await chrome.windows.create({ url: chrome.runtime.getURL('popup/facepalm.html'), type: 'popup', width: 440, height: 680 });
+      window.close();
+    });
+    wrap.append(tile, edit);
+    return wrap;
+  }
+
   // Buttons come from the shared registry; their enabled/label logic reads state.
   const controller = {
     get mode() { return state ? state.mode : 'visible'; },
@@ -52,7 +70,8 @@
     const label = Object.assign(document.createElement('span'), { className: 'label' });
     b.append(icon, label);
     b.addEventListener('click', () => { if (a.enabled()) a.run(); });
-    $('actions').append(b);
+    if (a.id === 'facepalm') $('actions').append(withEditButton(b));
+    else $('actions').append(b);
     return { a, b, label };
   });
 

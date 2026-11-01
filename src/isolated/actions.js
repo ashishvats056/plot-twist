@@ -67,6 +67,33 @@
     };
   }
 
+  // Your own facepalm, set in the facepalm editor and kept in
+  // chrome.storage.local (this device only): an emoji, or a picture or GIF as
+  // a data: URL. It crosses extension contexts and the page: never trust it.
+  const CUSTOM_FACEPALM_KEY = 'customFacepalm';
+  const MAX_FACEPALM_BYTES = 4 * 1024 * 1024;
+  const MAX_FACEPALM_CHARS = Math.ceil(MAX_FACEPALM_BYTES / 3) * 4 + 32;
+  const FACEPALM_IMAGE_RE = /^data:image\/(gif|png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/;
+  const MAX_EMOJI_CHARS = 32;
+
+  function sanitizeEmoji(raw) {
+    if (typeof raw !== 'string') return null;
+    const t = raw.trim();
+    // eslint-disable-next-line no-control-regex
+    return t && t.length <= MAX_EMOJI_CHARS && !/[\u0000-\u001f\u007f]/.test(t) ? t : null;
+  }
+
+  function sanitizeCustomFacepalm(raw) {
+    if (!raw || typeof raw !== 'object') return null;
+    if (raw.kind === 'emoji') {
+      const emoji = sanitizeEmoji(raw.emoji);
+      return emoji ? { kind: 'emoji', emoji } : null;
+    }
+    if (raw.kind === 'image' && typeof raw.dataUrl === 'string' && raw.dataUrl.length <= MAX_FACEPALM_CHARS
+      && FACEPALM_IMAGE_RE.test(raw.dataUrl)) return { kind: 'image', dataUrl: raw.dataUrl };
+    return null;
+  }
+
   // c: { mode, hasCamera, trigger(event) } — read live on every call.
   function createActions(c) {
     const visible = () => c.hasCamera && c.mode === 'visible';
@@ -85,8 +112,8 @@
   }
 
   const api = {
-    allowsGesture, createActions, sanitizeSettings, sanitizeState,
-    DEFAULT_SETTINGS, GESTURE_SETTINGS, GESTURE_TOGGLES, TRIGGERS,
+    allowsGesture, createActions, sanitizeSettings, sanitizeState, sanitizeEmoji, sanitizeCustomFacepalm,
+    CUSTOM_FACEPALM_KEY, MAX_FACEPALM_BYTES, DEFAULT_SETTINGS, GESTURE_SETTINGS, GESTURE_TOGGLES, TRIGGERS,
   };
   if (typeof module === 'object' && module.exports) module.exports = api;
   else root.PlotTwistActions = api;

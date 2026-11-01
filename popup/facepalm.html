@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="color-scheme" content="light dark">
+<title>Your facepalm · Plot Twist</title>
+<link rel="stylesheet" href="popup.css">
+<link rel="stylesheet" href="facepalm.css">
+</head>
+<body class="editor">
+<main class="card">
+  <header class="top">
+    <img class="logo" src="../icons/logo.svg" alt="" width="32" height="32">
+    <div class="title">
+      <h1>Your facepalm</h1>
+      <p>Shown when you facepalm. Saved on this device only.</p>
+    </div>
+  </header>
+
+  <section class="current" aria-label="Current facepalm">
+    <div class="preview" id="preview" aria-live="polite"></div>
+    <div class="current-text">
+      <strong id="current-label"></strong>
+      <small id="current-hint"></small>
+      <button type="button" id="reset" class="link-btn" hidden>Use the default</button>
+    </div>
+  </section>
+
+  <section class="pick" aria-labelledby="h-emoji">
+    <h2 id="h-emoji">Emoji</h2>
+    <div class="emoji-row" id="emoji-row"></div>
+    <form class="field" id="emoji-form">
+      <input id="emoji" type="text" maxlength="16" placeholder="Or type / paste any emoji" aria-label="Emoji" autocomplete="off">
+      <button type="submit" class="primary">Use</button>
+    </form>
+  </section>
+
+  <section class="pick" aria-labelledby="h-file">
+    <h2 id="h-file">Picture or GIF</h2>
+    <label class="drop" id="drop">
+      <input id="file" type="file" accept="image/gif,image/png,image/jpeg,image/webp">
+      <span><strong>Choose a file</strong> or drop it here</span>
+      <small>GIF, PNG, JPEG or WebP, up to 4 MB. A GIF plays once, full frame.</small>
+    </label>
+  </section>
+
+  <section class="pick" aria-labelledby="h-link">
+    <h2 id="h-link">Link</h2>
+    <form class="field" id="link-form">
+      <input id="link" type="url" placeholder="https://…/facepalm.gif" aria-label="Image link" autocomplete="off">
+      <button type="submit" class="primary">Use</button>
+    </form>
+    <small class="note">A direct link to a picture or GIF. Chrome asks you to allow that one site; the picture is downloaded once and kept on this device.</small>
+  </section>
+
+  <p class="msg" id="msg" role="status"></p>
+</main>
+<script src="../src/actions.js"></script>
+<script src="facepalm.js"></script>
+</body>
+</html>

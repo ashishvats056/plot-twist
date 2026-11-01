@@ -9,7 +9,7 @@
 #
 # Needs: Python 3.9+, pip install playwright pillow, python -m playwright install chromium
 # Usage: python dev/e2e/run.py [--quick] [--jobs N] [--ext DIR] [--only NAME ...]
-#   --quick   the 4 most telling scenarios (about 2 min)
+#   --quick   the 5 most telling scenarios (about 2 min)
 #   --ext DIR test this unpacked extension instead of the store file set
 import argparse, os, shutil, subprocess, sys, tempfile
 from concurrent.futures import ThreadPoolExecutor
@@ -35,8 +35,9 @@ SCENARIOS = {
     'photo-plain': (['photo', 'plain', 'remote'], ['vanish:OK', 'photo-fade:OK']),
     'cartoon-remote': (['t', 'plain', 'remote', 'face'], [BASIC, 'facepalm-kind:cartoon']),
     'cartoon-replace': (['t', 'replace', 'remote', 'face'], [BASIC, 'facepalm-kind:cartoon']),
+    'custom-picture': (['custom', 'plain', 'remote', 'face'], [BASIC, 'facepalm-kind:custom']),
 }
-QUICK = ['pipe-self', 'replace-remote', 'meet-bg-picture', 'cartoon-remote']
+QUICK = ['pipe-self', 'replace-remote', 'meet-bg-picture', 'cartoon-remote', 'custom-picture']
 
 # Fake camera: a few seconds of the still picture with a little sensor noise,
 # as a Y4M video (what Chromium's --use-file-for-fake-video-capture plays).

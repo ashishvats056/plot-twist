@@ -72,30 +72,56 @@ async function decodeGif(blob) {
   }
 }
 
-// The facepalm overlay: assets/facepalm.gif (animated) or a still image.
-// Returns { frames: [{ bitmap, ms }] }, or null for the emoji placeholder.
-async function loadFacepalmMedia() {
+// A picture or GIF → { frames: [{ bitmap, ms }] }. Throws if undecodable.
+async function decodeMedia(blob, isGif) {
+  if (isGif && typeof ImageDecoder === 'function') {
+    const frames = await decodeGif(blob);
+    if (frames.length) return { frames };
+  }
+  const still = await createImageBitmap(blob);
+  const bitmap = await scaled(still, still.width, still.height);
+  still.close();
+  return { frames: [{ bitmap, ms: Infinity }] };
+}
+
+// The facepalm overlay, first found of: your own (set in the facepalm editor,
+// kept in chrome.storage.local on this device), or assets/facepalm.gif (or a
+// still image; local builds only). Returns { media, emoji }: media is
+// { frames: [{ bitmap, ms }] } or null; emoji is your own emoji or null.
+// Neither: the page uses the cartoon of your face, or the 🤦 emoji.
+const A = globalThis.PlotTwistActions;
+const storage = globalThis.chrome && chrome.storage && chrome.storage.local; // absent in the dev harness
+
+async function loadFacepalm() {
+  const custom = storage
+    ? A.sanitizeCustomFacepalm((await storage.get(A.CUSTOM_FACEPALM_KEY).catch(() => ({})))[A.CUSTOM_FACEPALM_KEY])
+    : null;
+  if (custom && custom.kind === 'emoji') return { media: null, emoji: custom.emoji };
+  if (custom) {
+    try {
+      const [head, b64] = custom.dataUrl.split(',');
+      const type = head.slice(5, head.indexOf(';'));
+      const blob = new Blob([Uint8Array.from(atob(b64), (ch) => ch.charCodeAt(0))], { type });
+      return { media: await decodeMedia(blob, blob.type === 'image/gif'), emoji: null };
+    } catch {
+      // undecodable: fall back to the defaults below
+    }
+  }
   for (const name of ['facepalm.gif', 'facepalm.png', 'facepalm.jpg', 'facepalm.jpeg', 'facepalm.webp']) {
     try {
       const res = await fetch(asset(`assets/${name}`));
       if (!res.ok) continue;
-      const blob = await res.blob();
-      if (name.endsWith('.gif') && typeof ImageDecoder === 'function') {
-        const frames = await decodeGif(blob);
-        if (frames.length) return { frames };
-      }
-      const still = await createImageBitmap(blob);
-      const bitmap = await scaled(still, still.width, still.height);
-      still.close();
-      return { frames: [{ bitmap, ms: Infinity }] };
+      return { media: await decodeMedia(await res.blob(), name.endsWith('.gif')), emoji: null };
     } catch {
       // not present or not decodable; try the next name
     }
   }
-  return null;
+  return { media: null, emoji: null };
 }
 
 let models = null;
+let facepalm = { media: null, emoji: null };
+let facepalmSeq = 0;
 let lastTs = 0;
 
 // Separable max filter on a 0/1 mask: grows the person by r pixels.
@@ -178,7 +204,7 @@ addEventListener('message', (e) => {
   parentOrigin = e.origin;
   if (msg.type === 'hello') {
     ready.then(
-      (assets) => post({ type: 'ready', ...assets }), // bitmaps are cloned, so repeat hellos are safe
+      () => post({ type: 'ready', facepalm: facepalm.media, facepalmEmoji: facepalm.emoji }), // bitmaps are cloned, so repeat hellos are safe
       (err) => post({ type: 'error', message: String(err && err.message || err) }),
     );
     return;
@@ -204,7 +230,7 @@ addEventListener('message', (e) => {
 
 const ready = (async () => {
   const fileset = await FilesetResolver.forVisionTasks(asset('vendor/wasm'));
-  const [hands, face, segmenter, facepalm] = await Promise.all([
+  const [hands, face, segmenter, loaded] = await Promise.all([
     create(HandLandmarker, fileset, 'models/hand_landmarker.task', {
       numHands: 2,
       minHandDetectionConfidence: HAND_CONFIDENCE,
@@ -216,8 +242,21 @@ const ready = (async () => {
       outputConfidenceMasks: true,
       outputCategoryMask: false,
     }),
-    loadFacepalmMedia(),
+    loadFacepalm(),
   ]);
   models = { hands, face, segmenter };
-  return { facepalm };
+  if (!facepalmSeq) facepalm = loaded; // else changed while loading: that load wins
 })();
+
+// Changed in the facepalm editor: reload it and tell the page, mid-call.
+if (storage) {
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area !== 'local' || !(A.CUSTOM_FACEPALM_KEY in changes)) return;
+    const seq = ++facepalmSeq;
+    loadFacepalm().then((next) => {
+      if (seq !== facepalmSeq) return; // a newer change won
+      facepalm = next;
+      post({ type: 'facepalm', facepalm: next.media, facepalmEmoji: next.emoji });
+    });
+  });
+}
