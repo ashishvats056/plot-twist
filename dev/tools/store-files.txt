@@ -1,0 +1,14 @@
+# What the Chrome Web Store zip contains (read by dev/tools/package.py and
+# dev/e2e/run.py, so the browser test runs exactly what the store ships).
+# Never add assets/facepalm.gif: it is a film clip we have no rights to ship.
+manifest.json
+LICENSE-APACHE-2.0.txt
+THIRD_PARTY_NOTICES.md
+PRIVACY.md
+icons
+popup
+src
+detector
+vendor
+models
+assets/README.txt

@@ -1,0 +1,47 @@
+# Unit + browser tests on Windows, macOS and Linux on every push and pull
+# request. The browser test runs the store file set (no local facepalm.gif).
+name: test
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Unit tests
+        run: node --test "test/*.test.js"
+      - name: Store package builds
+        run: python dev/tools/package.py
+      - name: Install browser test tools
+        run: |
+          python -m pip install playwright==1.61.0 pillow
+          python -m playwright install --with-deps chromium
+      - name: Browser test (headless Chromium, fake camera)
+        run: python dev/e2e/run.py --jobs 2
+        env:
+          PYTHONUTF8: '1'
+      - name: Contact sheets
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-sheets-${{ matrix.os }}
+          path: dev/e2e/out/sheet-*.png
+          if-no-files-found: ignore

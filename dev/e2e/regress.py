@@ -1,5 +1,5 @@
-# Regression E2E with a person on camera (fake device from person.y4m, made by run.sh).
-# Usage: python3 regress.py <extension-dir> <tag> plain|pipe|effect self|remote
+# One browser scenario, run by run.py (which makes the fake cameras in out/).
+# Usage: python regress.py <extension-dir> <tag> plain|pipe|effect|replace|bgpic self|remote [statue|face]
 # Plain Meet-like stub: getUserMedia → video element (self view) → WebRTC loopback
 # → remote video. Optional ?effect=1 applies a Meet-style background effect.
 # Measures the remote video: overlays (cinema greyscale, facepalm GIF frames,
@@ -14,7 +14,10 @@ MODE = sys.argv[3] if len(sys.argv) > 3 else 'plain'
 EFFECT = MODE != 'plain'
 VIEW = sys.argv[4] if len(sys.argv) > 4 else 'remote'
 HERE = os.path.dirname(os.path.abspath(__file__))
-CAM = os.path.join(HERE, 'person.y4m')
+OUT = os.path.join(HERE, 'out')
+CAMERA = sys.argv[5] if len(sys.argv) > 5 else 'statue'
+CAM = os.path.join(OUT, 'face.y4m' if CAMERA == 'face' else 'person.y4m')
+PROFILE = os.environ.get('PT_PROFILE') or os.path.join(OUT, f'profile-{TAG}-{MODE}-{VIEW}-{CAMERA}')
 
 STUB = r"""<!doctype html><meta charset=utf-8><body style="margin:0">
 <video id=self autoplay muted playsinline width=320></video>
@@ -92,11 +95,12 @@ let prev = null; window.VIEW = '%VIEW%';
 window.sample = () => {
   const c = document.getElementById('c'), x = c.getContext('2d', { willReadFrequently: true });
   x.drawImage(document.getElementById(window.VIEW), 0, 0, 160, 90);
-  const d = x.getImageData(0, 0, 160, 90).data; let sat = 0, green = 0, diff = 0, edgeGreen = 0, blue = 0;
+  const d = x.getImageData(0, 0, 160, 90).data; let sat = 0, green = 0, diff = 0, edgeGreen = 0, blue = 0, yellow = 0;
   for (let i = 0; i < d.length; i += 4) {
     const r = d[i], g = d[i+1], b = d[i+2];
     const px = (i / 4) % 160, py = Math.floor(i / 4 / 160);
     const outside = ((px - 80) / 35) ** 2 + ((py - 49.5) / 45) ** 2 > 1.15;
+    if (r > 200 && g > 140 && b < 90 && r - b > 130) yellow++;
     if (b > 180 && r < 70 && g > 60 && g < 130) { blue++; if (inBox(i)) window.__blueIn = (window.__blueIn || 0) + 1; }
     if (outside && Math.abs(r - 95) < 30 && Math.abs(g - 159) < 30 && Math.abs(b - 90) < 30) edgeGreen++;
     sat += Math.max(r, g, b) - Math.min(r, g, b);
@@ -104,13 +108,27 @@ window.sample = () => {
     if (prev) diff += Math.abs(r - prev[i]) + Math.abs(g - prev[i+1]) + Math.abs(b - prev[i+2]);
   }
   prev = d; const n = d.length / 4; const bi = window.__blueIn || 0; window.__blueIn = 0;
-  return { sat: +(sat / n).toFixed(1), green: +(green / n).toFixed(3), edgeGreen: +(edgeGreen / n).toFixed(3), blue: +(blue / n).toFixed(3), blueIn: +(bi / (84 * 84)).toFixed(3), diff: +(diff / n / 3).toFixed(2), img: c.toDataURL('image/jpeg', 0.7) };
+  return { sat: +(sat / n).toFixed(1), green: +(green / n).toFixed(3), edgeGreen: +(edgeGreen / n).toFixed(3), blue: +(blue / n).toFixed(3), blueIn: +(bi / (84 * 84)).toFixed(3), yellow: +(yellow / n).toFixed(3), diff: +(diff / n / 3).toFixed(2), img: c.toDataURL('image/jpeg', 0.7) };
+};
+// The cartoon sticker's white rim: share of white pixels on a thin ring at the
+// sticker's edge (radius 0.33 h × 1.045, centred).
+window.ring = () => {
+  const W = 320, H = 180, c = new OffscreenCanvas(W, H), x = c.getContext('2d', { willReadFrequently: true });
+  x.drawImage(document.getElementById(window.VIEW), 0, 0, W, H);
+  const d = x.getImageData(0, 0, W, H).data, R = 0.33 * H * 1.045; let n = 0, white = 0;
+  for (let i = 0; i < 720; i++) {
+    const a = (i / 720) * Math.PI * 2, px = Math.round(W / 2 + Math.cos(a) * R), py = Math.round(H / 2 + Math.sin(a) * R);
+    if (py < 0 || py >= H) continue;
+    const k = (py * W + px) * 4; n++;
+    if (d[k] > 215 && d[k + 1] > 215 && d[k + 2] > 215) white++;
+  }
+  return +(white / n).toFixed(2);
 };
 </script>""".replace('%MODE%', MODE).replace('%VIEW%', VIEW)
 
 async def main():
     async with async_playwright() as p:
-        ctx = await p.chromium.launch_persistent_context(os.path.join(HERE, f'profile-{TAG}-{MODE}-{VIEW}'), headless=True, channel='chromium',
+        ctx = await p.chromium.launch_persistent_context(PROFILE, headless=True, channel='chromium',
             args=[f'--disable-extensions-except={EXT}', f'--load-extension={EXT}',
                   '--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream', f'--use-file-for-fake-video-capture={CAM}',
                   '--disable-features=WebRtcHideLocalIpsWithMdns', '--allow-loopback-in-peer-connection'],
@@ -119,8 +137,11 @@ async def main():
         page = await ctx.new_page(); errs = []
         page.on('pageerror', lambda e: errs.append(str(e)))
         await page.goto('https://meet.google.com/abc')
-        pg = await ctx.new_page(); await pg.goto('chrome://extensions'); await pg.wait_for_timeout(500)
-        ext = await pg.evaluate("document.querySelector('extensions-manager').shadowRoot.querySelector('extensions-item-list').shadowRoot.querySelector('extensions-item').id")
+        pg = await ctx.new_page(); await pg.goto('chrome://extensions')
+        # wait for the list rather than a fixed delay (slow CI machines)
+        item = "document.querySelector('extensions-manager')?.shadowRoot?.querySelector('extensions-item-list')?.shadowRoot?.querySelector('extensions-item')"
+        await pg.wait_for_function(f"!!{item}", timeout=30000)
+        ext = await pg.evaluate(f"{item}.id")
         await pg.goto(f'chrome-extension://{ext}/popup/popup.html')
         if TAG == 'live':  # join with effects off, switch them on mid-call
             await pg.evaluate("chrome.storage.sync.set({enabled: false})")
@@ -139,21 +160,25 @@ async def main():
             await page.evaluate('sample()')
             base = await page.evaluate('sample()')
             await q({'type': 'trigger', 'event': event})
-            series = []
+            series = []; rings = []
             for i in range(ms // every):
                 await page.wait_for_timeout(every)
                 s = await page.evaluate('sample()'); series.append(s)
+                if event == 'facepalm': rings.append(await page.evaluate('ring()'))
             shots.extend([series[len(series) * k // 4]['img'] for k in range(4)])
             res[label] = {'base_sat': base['sat'], 'base_blue': base['blue'], 'min_sat': min(s['sat'] for s in series),
                           'max_green': max(s['green'] for s in series),
                           'max_edge_green': max(s['edgeGreen'] for s in series),
-                          'diffs': [s['diff'] for s in series]}
+                          'diffs': [s['diff'] for s in series],
+                          'max_yellow': max(s['yellow'] for s in series), 'base_yellow': base['yellow'],
+                          'max_ring': max(rings) if rings else 0, 'base_ring': await page.evaluate('ring()') if rings else 0}
             await page.wait_for_timeout(1500)
         if TAG == 'photo':  # capture an empty background first (the "person" stays: fine for timing)
             await q({'type': 'captureBackground'})
             await page.wait_for_timeout(5800)
             res['has_photo'] = (await q({'type': 'getState'}))['state'].get('hasBackgroundPhoto')
         await run('cinema', 'cinema', 2400)
+        res['cartoon_ready'] = (await q({'type': 'getState'}))['state'].get('cartoonReady')
         await run('facepalm', 'facepalm', 2400)
         await run('money', 'doubleSnap', 3000)
         await run('vanish', 'snap', 3000, 100)
@@ -175,8 +200,8 @@ async def main():
         html = '<body style="margin:0;background:#000">' + ''.join(f'<img src="{s}" width=160>' for s in shots) + '</body>'
         sheet = await ctx.new_page(); await sheet.set_viewport_size({'width': 640, 'height': 450})
         await sheet.set_content(html); await sheet.wait_for_timeout(300)
-        await sheet.screenshot(path=os.path.join(HERE, f'sheet-{TAG}.png'))
-        res['viewer'] = VIEW; res['mode'] = MODE
+        await sheet.screenshot(path=os.path.join(OUT, f'sheet-{os.path.basename(PROFILE)}.png'))
+        res['viewer'] = VIEW; res['mode'] = MODE; res['camera'] = CAMERA
         print(json.dumps(res))
         await ctx.close()
 
