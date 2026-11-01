@@ -2,79 +2,104 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 require('../src/cartoon.js');
 
-const { faceCrop, cartoonize, compose, growMask, averageColor, handColor } = globalThis.PlotTwistCartoon;
+const { readTraits, expression, handPose, toonSkin, toonHair, toonShirt } = globalThis.PlotTwistCartoon;
 
-const solid = (w, h, rgb) => {
-  const d = new Uint8ClampedArray(w * h * 4);
-  for (let i = 0; i < d.length; i += 4) d.set([...rgb, 255], i);
-  return d;
-};
+const W = 200;
+const H = 200;
+const SKIN = [200, 150, 120];
+const HAIR = [40, 35, 35];
+const SHIRT = [40, 90, 200];
+const BG = [235, 235, 235];
+// eyes at (80,80) and (120,80), nose (100,95), mouth (100,110): eye distance 40
+const FACE = { x: 0.3, y: 0.3, w: 0.4, h: 0.4, kp: [[0.4, 0.4], [0.6, 0.4], [0.5, 0.475], [0.5, 0.55]] };
 
-test('the face crop is a square around the face, larger than the face box', () => {
-  const c = faceCrop({ x: 0.4, y: 0.3, w: 0.2, h: 0.3 }, 1280, 720);
-  assert.equal(c.size, Math.round(0.2 * 1280 * 1.9), 'from the larger side of the face box');
-  assert.ok(c.size > 0.2 * 1280);
-  const cx = c.x + c.size / 2;
-  assert.ok(Math.abs(cx - 640) < 2, 'centred on the face horizontally');
-});
-
-test('the face crop stays inside the frame near the edges', () => {
-  for (const face of [{ x: 0, y: 0, w: 0.2, h: 0.3 }, { x: 0.85, y: 0.75, w: 0.15, h: 0.25 }, { x: 0.1, y: 0.1, w: 0.9, h: 0.9 }]) {
-    const c = faceCrop(face, 640, 360);
-    assert.ok(c.x >= 0 && c.y >= 0, JSON.stringify(c));
-    assert.ok(c.x + c.size <= 640 && c.y + c.size <= 360, JSON.stringify(c));
+// A flat cartoon person: hair above the face box, skin face, shirt below.
+function person({ beard = false, glasses = false, bald = false } = {}) {
+  const d = new Uint8ClampedArray(W * H * 4);
+  const put = (x, y, c) => d.set([...c, 255], (y * W + x) * 4);
+  const fill = (x0, y0, x1, y1, c) => { for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) put(x, y, c); };
+  fill(0, 0, W, H, BG);
+  fill(60, 20, 140, 60, bald ? SKIN : HAIR);
+  fill(60, 60, 140, 140, SKIN);
+  fill(20, 160, 180, 200, SHIRT);
+  if (beard) fill(70, 98, 130, 140, HAIR);
+  if (glasses) {
+    for (const cx of [80, 120]) {
+      fill(cx - 18, 70, cx + 18, 72, HAIR); fill(cx - 18, 92, cx + 18, 94, HAIR);
+      fill(cx - 18, 70, cx - 16, 94, HAIR); fill(cx + 16, 70, cx + 18, 94, HAIR);
+    }
+    fill(96, 72, 104, 76, HAIR);
   }
+  return d;
+}
+
+test('reads skin, hair and shirt colours', () => {
+  const t = readTraits(person(), W, H, FACE, null);
+  assert.deepEqual(t.skin, SKIN);
+  assert.deepEqual(t.hair, HAIR);
+  assert.deepEqual(t.shirt, SHIRT);
+  assert.equal(t.bald, false);
 });
 
-test('a flat area becomes one flat colour, with no ink', () => {
-  const out = cartoonize(solid(24, 24, [200, 120, 90]), 24, 24);
-  const first = [...out.slice(0, 4)];
-  for (let i = 0; i < out.length; i += 4) assert.deepEqual([...out.slice(i, i + 4)], first);
-  assert.notDeepEqual(first.slice(0, 3), [38, 30, 48]);
-  assert.ok(first[0] > first[1] && first[1] > first[2], 'keeps the hue');
+test('a plain face has no glasses, beard or moustache', () => {
+  const t = readTraits(person(), W, H, FACE, null);
+  assert.equal(t.glasses, false);
+  assert.equal(t.beard, 0);
+  assert.equal(t.moustache, false);
 });
 
-test('a sharp edge gets an ink line, flat areas on each side do not', () => {
-  const w = 40; const h = 12;
-  const d = solid(w, h, [240, 240, 240]);
-  for (let y = 0; y < h; y++) for (let x = 20; x < w; x++) d.set([20, 20, 20], (y * w + x) * 4);
-  const out = cartoonize(d, w, h);
-  const px = (x, y) => [...out.slice((y * w + x) * 4, (y * w + x) * 4 + 3)];
-  const ink = [38, 30, 48];
-  assert.ok([18, 19, 20, 21].some((x) => px(x, 6).join() === ink.join()), 'ink on the edge');
-  assert.notDeepEqual(px(3, 6), ink);
-  assert.notDeepEqual(px(36, 6), ink);
+test('finds glasses frames and a beard', () => {
+  const t = readTraits(person({ glasses: true, beard: true }), W, H, FACE, null);
+  assert.equal(t.glasses, true);
+  assert.ok(t.beard > 0.5, String(t.beard));
+  assert.equal(t.moustache, true);
 });
 
-test('the hand takes the sampled skin colour, lifted when very dark', () => {
-  const d = solid(10, 10, [200, 150, 120]);
-  assert.deepEqual(averageColor(d, 10, 10, { x: 0.2, y: 0.2, w: 0.5, h: 0.5 }), [200, 150, 120]);
-  assert.deepEqual(handColor([200, 150, 120]), [200, 150, 120]);
-  const dark = handColor([30, 20, 15]);
-  assert.ok(0.299 * dark[0] + 0.587 * dark[1] + 0.114 * dark[2] >= 89);
+test('a dark but skin-coloured chin (a shadow) is not a beard', () => {
+  const d = person();
+  for (let y = 120; y < 140; y++) for (let x = 85; x < 115; x++) d.set([110, 70, 50, 255], (y * W + x) * 4);
+  assert.equal(readTraits(d, W, H, FACE, null).beard, 0);
 });
 
-test('growMask widens a mask by r pixels and no more', () => {
-  const w = 9; const h = 9;
-  const m = new Uint8ClampedArray(w * h);
-  m[4 * w + 4] = 255;
-  const g = growMask(m, w, h, 2);
-  assert.equal(g[4 * w + 6], 255);
-  assert.equal(g[2 * w + 2], 255);
-  assert.equal(g[4 * w + 7], 0);
-  assert.equal(g[1 * w + 4], 0);
+test('no hair above the face reads as bald', () => {
+  assert.equal(readTraits(person({ bald: true }), W, H, FACE, null).bald, true);
 });
 
-test('compose keeps the person, inks a rim round them, and backs them with the backdrop', () => {
-  const w = 40; const h = 40;
-  const toon = solid(w, h, [200, 100, 50]);
-  const mask = new Uint8ClampedArray(w * h);
-  for (let y = 10; y < 30; y++) for (let x = 10; x < 30; x++) mask[y * w + x] = 255;
-  const out = compose(toon, mask, w, h);
-  const px = (x, y) => [...out.slice((y * w + x) * 4, (y * w + x) * 4 + 3)];
-  assert.deepEqual(px(20, 20), [200, 100, 50], 'person kept');
-  assert.deepEqual(px(9, 20), [38, 30, 48], 'ink outline just outside');
-  const bg = px(2, 2);
-  assert.ok(bg[2] > bg[0], 'blue backdrop far outside');
-  assert.deepEqual([...compose(toon, null, w, h).slice(0, 3)], [200, 100, 50], 'no mask: whole crop');
+test('works without keypoints, and ignores pixels outside the person mask', () => {
+  const { kp, ...noKp } = FACE;
+  assert.deepEqual(readTraits(person(), W, H, noKp, null).skin, SKIN);
+  const mask = new Uint8ClampedArray(W * H).fill(255);
+  for (let y = 150; y < H; y++) for (let x = 0; x < W; x++) mask[y * W + x] = 0;
+  assert.deepEqual(readTraits(person(), W, H, FACE, mask).shirt, [11, 87, 208], 'falls back to the brand blue');
+});
+
+test('the expression: blink, squeeze shut on the slap, then a resigned sigh', () => {
+  assert.equal(expression(0).eyes, 'open');
+  assert.equal(expression(0).mouth, 'smile');
+  assert.ok(expression(260).open < 0.1, 'mid-blink');
+  assert.equal(expression(700).eyes, 'squeeze');
+  assert.equal(expression(2000).eyes, 'rest');
+  assert.equal(expression(2000).mouth, 'sigh');
+});
+
+test('the hand swings in and lands on the forehead', () => {
+  assert.equal(handPose(100), null);
+  const mid = handPose(450);
+  const land = handPose(620);
+  assert.ok(mid.x > land.x && mid.y > land.y, 'comes up from the bottom right');
+  assert.ok(land.y < 0, 'on the forehead, above the centre');
+  assert.ok(Math.abs(handPose(3000).y - land.y) < 0.1, 'stays there');
+});
+
+test('cartoon colours stay valid and keep the tone', () => {
+  for (const c of [[40, 25, 20], [150, 115, 90], [250, 220, 200]]) {
+    for (const f of [toonSkin, toonHair, toonShirt]) {
+      const o = f(c);
+      assert.equal(o.length, 3);
+      assert.ok(o.every(Number.isFinite));
+    }
+  }
+  assert.ok(toonSkin([150, 115, 90])[0] > 150, 'skin is brightened');
+  const l = (c) => 0.299 * c[0] + 0.587 * c[1] + 0.114 * c[2];
+  assert.ok(l(toonSkin([60, 40, 30])) < l(toonSkin([230, 190, 170])), 'dark skin stays darker than light skin');
 });

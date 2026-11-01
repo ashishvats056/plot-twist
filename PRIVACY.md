@@ -28,11 +28,12 @@ All processing happens in memory, in your browser, on your device.
 - **Empty background photo** (only if you click "Capture empty background"). One frame is
   kept in memory for that tab. It is deleted when your camera stops, when you
   reload or leave the page, or when you click ✕. It is never written to disk.
-- **Cartoon facepalm.** Shortly after your camera starts, Plot Twist crops your
-  face from one camera frame and turns it into a cartoon on your device. It is
-  only shown in your video when you trigger the facepalm. It is kept in memory
-  for that camera session, deleted when your camera stops, and never written to
-  disk or sent anywhere.
+- **Cartoon facepalm.** Shortly after your camera starts, Plot Twist looks at
+  one camera frame on your device and notes a few things to draw a cartoon
+  character that looks like you: your skin, hair and shirt colours, and whether
+  you wear glasses or have a beard. Only those colours and yes/no traits are
+  kept, never a picture. They are kept in memory for that camera session,
+  deleted when your camera stops, and never written to disk or sent anywhere.
 - **Your own facepalm** (only if you add one by hovering over Facepalm and
   clicking ✎). You can pick an emoji, a picture or GIF from your computer, or
   a link to one. A link is downloaded once, straight from that site, after

@@ -52,7 +52,7 @@ Add an entry to `createActions` in `src/actions.js` (`id`, `icon`, `label`, `ena
 
 ### The facepalm
 
-By default the facepalm is a round cartoon sticker of your own face, with a cartoon hand slapping your forehead. About 1.5 s after your camera starts, the extension takes one frame in which the face detector finds your face, crops the face and cartoonises it with canvas filters (flat colour bands and ink outlines). This all happens on your device, with no model download and no network. The cartoon is kept in memory only. It is never saved, and it's deleted when your camera stops, so each camera session makes a new one. Until it's ready, or if no face is found, the facepalm is the 🤦 emoji.
+By default the facepalm is a round sticker with a cute animated cartoon character that looks like you: it blinks, slaps its forehead, squeezes its eyes shut, sweats and sighs. About 1.5 s after your camera starts, the extension takes one frame in which the face detector finds your face and reads a few traits from it: skin, hair and shirt colours, bald or long hair, glasses, beard and moustache. The character is drawn in code from those, every frame. This all happens on your device, with no model download and no network. Only the traits are kept, in memory, never a picture; they're deleted when your camera stops, so each camera session reads them again. Until it's ready, or if no face is found, the facepalm is the 🤦 emoji.
 
 ### Your own facepalm
 

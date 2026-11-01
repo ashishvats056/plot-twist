@@ -253,7 +253,7 @@
           if (!faceFrame || faceFrame.width !== w || faceFrame.height !== h) faceFrame = new OffscreenCanvas(w, h);
           faceFrame.getContext('2d').drawImage(source, 0, 0, w, h);
           state.cartoonPending = now;
-          forCartoon = true; // also ask for a person mask, to cut the cartoon out
+          forCartoon = true; // also ask for a person mask, so the cartoon reads only your pixels
         }
         if (detector.send(det.transferToImageBitmap(), now, forCartoon)) segCtx.drawImage(source, 0, 0, w, h);
       }

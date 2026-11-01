@@ -194,6 +194,8 @@ function detect(bitmap, segment) {
     w: d.boundingBox.width / width,
     h: d.boundingBox.height / height,
     noseY: d.keypoints && d.keypoints[NOSE_TIP] ? d.keypoints[NOSE_TIP].y : undefined,
+    // eyes, nose tip, mouth (normalised): where the cartoon reads your features
+    kp: d.keypoints && d.keypoints.length >= 4 ? d.keypoints.slice(0, 4).map((k) => [k.x, k.y]) : undefined,
   } : null;
   return { hands, face, maskData: segment ? personMask(bitmap, ts, face) : null };
 }
