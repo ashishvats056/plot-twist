@@ -212,7 +212,7 @@
       // with your face in it. Not needed when a local image is set.
       get wantsCartoon() { return !!cartoon && !cartoon.ready && !facepalmMedia; },
       get hasCartoon() { return !!cartoon && cartoon.ready; },
-      buildCartoon: (source, face, sw, sh) => !!cartoon && cartoon.build(source, face, sw, sh),
+      buildCartoon: (source, face, sw, sh, mask) => !!cartoon && cartoon.build(source, face, sw, sh, mask),
       clearCartoon() { if (cartoon) cartoon.clear(); },
       setMask: (source, mask, sw, sh, learn, hands) => vanish.setMask(source, mask, sw, sh, learn, hands),
       vanish: (now, source, sw, sh) => vanish.vanish(now, source, sw, sh),

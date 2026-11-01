@@ -2,7 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 require('../src/cartoon.js');
 
-const { faceCrop, cartoonize, averageColor, handColor } = globalThis.PlotTwistCartoon;
+const { faceCrop, cartoonize, compose, growMask, averageColor, handColor } = globalThis.PlotTwistCartoon;
 
 const solid = (w, h, rgb) => {
   const d = new Uint8ClampedArray(w * h * 4);
@@ -52,4 +52,29 @@ test('the hand takes the sampled skin colour, lifted when very dark', () => {
   assert.deepEqual(handColor([200, 150, 120]), [200, 150, 120]);
   const dark = handColor([30, 20, 15]);
   assert.ok(0.299 * dark[0] + 0.587 * dark[1] + 0.114 * dark[2] >= 89);
+});
+
+test('growMask widens a mask by r pixels and no more', () => {
+  const w = 9; const h = 9;
+  const m = new Uint8ClampedArray(w * h);
+  m[4 * w + 4] = 255;
+  const g = growMask(m, w, h, 2);
+  assert.equal(g[4 * w + 6], 255);
+  assert.equal(g[2 * w + 2], 255);
+  assert.equal(g[4 * w + 7], 0);
+  assert.equal(g[1 * w + 4], 0);
+});
+
+test('compose keeps the person, inks a rim round them, and backs them with the backdrop', () => {
+  const w = 40; const h = 40;
+  const toon = solid(w, h, [200, 100, 50]);
+  const mask = new Uint8ClampedArray(w * h);
+  for (let y = 10; y < 30; y++) for (let x = 10; x < 30; x++) mask[y * w + x] = 255;
+  const out = compose(toon, mask, w, h);
+  const px = (x, y) => [...out.slice((y * w + x) * 4, (y * w + x) * 4 + 3)];
+  assert.deepEqual(px(20, 20), [200, 100, 50], 'person kept');
+  assert.deepEqual(px(9, 20), [38, 30, 48], 'ink outline just outside');
+  const bg = px(2, 2);
+  assert.ok(bg[2] > bg[0], 'blue backdrop far outside');
+  assert.deepEqual([...compose(toon, null, w, h).slice(0, 3)], [200, 100, 50], 'no mask: whole crop');
 });

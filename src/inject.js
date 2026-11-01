@@ -61,6 +61,7 @@
     wantVanish: false,
     cartoonPending: 0, // when the frame now in flight to the detector was also kept for the cartoon (0: none)
     cartoonFace: null, // face box found in that frame
+    cartoonMask: null, // person mask of that frame (the same bitmap as pendingMask), or null
     rec: { frames: [], audio: [], raw: [], clicks: [] },
   };
 
@@ -144,9 +145,10 @@
         });
         if (state.cartoonPending) {
           state.cartoonPending = 0;
-          if (m.face) state.cartoonFace = m.face;
+          if (m.face) { state.cartoonFace = m.face; state.cartoonMask = m.mask || null; }
         }
         if (m.mask) {
+          if (state.cartoonMask === state.pendingMask) state.cartoonMask = null;
           if (state.pendingMask) state.pendingMask.close();
           state.pendingMask = m.mask;
           state.pendingHands = m.hands;
@@ -169,10 +171,10 @@
         return ready && busySince === null;
       },
       // Returns whether a person mask was requested for this frame.
-      send(bitmap, now) {
+      send(bitmap, now, forceSegment) {
         busySince = now;
         // Every frame while vanished (the person must be erased live), else ~8/s.
-        const segment = renderer.mode !== 'visible' || now - lastSegmentAt >= SEGMENT_EVERY_MS;
+        const segment = forceSegment || renderer.mode !== 'visible' || now - lastSegmentAt >= SEGMENT_EVERY_MS;
         if (segment) lastSegmentAt = now;
         frame.contentWindow.postMessage({ source: 'plottwist', type: 'detect', id: nextId++, bitmap, segment }, origin, [bitmap]);
         return segment;
@@ -218,6 +220,13 @@
       if (startedAt === null) startedAt = now;
       if (!state.settings.enabled) { ctx.drawImage(source, 0, 0, w, h); return out; }
       detector.start(); // no-op once started; only ever started with effects on
+      // before setMask, which closes the mask this may share
+      if (state.cartoonFace) {
+        if (faceFrame && renderer.wantsCartoon && renderer.buildCartoon(faceFrame, state.cartoonFace, w, h, state.cartoonMask)) log('cartoon facepalm ready');
+        state.cartoonFace = null;
+        state.cartoonMask = null;
+        faceFrame = null;
+      }
       if (state.pendingMask) {
         renderer.setMask(segFrame, state.pendingMask, w, h, worthLearning(now), state.pendingHands);
         state.pendingMask.close();
@@ -233,20 +242,17 @@
         if (!renderer.vanish(now, source, w, h)) log('vanish skipped: no person mask yet');
         state.wantVanish = false;
       }
-      if (state.cartoonFace) {
-        if (faceFrame && renderer.wantsCartoon && renderer.buildCartoon(faceFrame, state.cartoonFace, w, h)) log('cartoon facepalm ready');
-        state.cartoonFace = null;
-        faceFrame = null;
-      }
       if (detector.idle(now)) {
         detCtx.drawImage(source, 0, 0, det.width, det.height);
         if (state.cartoonPending && now - state.cartoonPending > DETECT_TIMEOUT_MS) state.cartoonPending = 0; // result lost
+        let forCartoon = false;
         if (renderer.wantsCartoon && !state.cartoonPending && now - startedAt >= CARTOON_AFTER_MS) {
           if (!faceFrame || faceFrame.width !== w || faceFrame.height !== h) faceFrame = new OffscreenCanvas(w, h);
           faceFrame.getContext('2d').drawImage(source, 0, 0, w, h);
           state.cartoonPending = now;
+          forCartoon = true; // also ask for a person mask, to cut the cartoon out
         }
-        if (detector.send(det.transferToImageBitmap(), now)) segCtx.drawImage(source, 0, 0, w, h);
+        if (detector.send(det.transferToImageBitmap(), now, forCartoon)) segCtx.drawImage(source, 0, 0, w, h);
       }
       renderer.draw(ctx, source, w, h, now, DEV && state.debug ? debugInfo() : null);
       return out;
