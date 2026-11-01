@@ -31,6 +31,7 @@
   const THUMB_W = 192;
   const THUMB_H = 108;
   const REC_MS = 60000; // dev recorder keeps the last 60 s
+  const CARTOON_AFTER_MS = 1500; // let the camera settle before cartooning your face
 
   const origGetUserMedia = md.getUserMedia.bind(md);
   const engine = G.createGestureEngine();
@@ -38,7 +39,7 @@
   // Everything needed is captured above; don't leave the modules where Meet's
   // scripts can reach them.
   if (!DEV) {
-    for (const name of ['PlotTwistGestures', 'PlotTwistEffects', 'PlotTwistActions', 'PlotTwistChannel', 'PlotTwistVanish', 'PlotTwistBackground']) {
+    for (const name of ['PlotTwistGestures', 'PlotTwistEffects', 'PlotTwistActions', 'PlotTwistChannel', 'PlotTwistVanish', 'PlotTwistBackground', 'PlotTwistCartoon']) {
       delete window[name];
     }
   }
@@ -58,6 +59,8 @@
     pendingMask: null,
     pendingHands: [], // hand landmarks from the same frame as pendingMask
     wantVanish: false,
+    cartoonPending: 0, // when the frame now in flight to the detector was also kept for the cartoon (0: none)
+    cartoonFace: null, // face box found in that frame
     rec: { frames: [], audio: [], raw: [], clicks: [] },
   };
 
@@ -139,6 +142,10 @@
           p: m.hands.map((h) => G.pinchRatio(h.landmarks).toFixed(2) + (G.isMiddleFolded(h.landmarks) ? 'f' : '')),
           f: m.face ? 1 : 0,
         });
+        if (state.cartoonPending) {
+          state.cartoonPending = 0;
+          if (m.face) state.cartoonFace = m.face;
+        }
         if (m.mask) {
           if (state.pendingMask) state.pendingMask.close();
           state.pendingMask = m.mask;
@@ -190,6 +197,8 @@
     const segFrame = new OffscreenCanvas(2, 2);
     const segCtx = segFrame.getContext('2d');
     const probe = new OffscreenCanvas(16, 9).getContext('2d', { willReadFrequently: true });
+    // The frame the cartoon facepalm is drawn from: only while one is wanted.
+    let faceFrame = null;
     let startedAt = null;
     const worthLearning = (now) => {
       if (now - startedAt < WARMUP_MS) return false;
@@ -224,8 +233,19 @@
         if (!renderer.vanish(now, source, w, h)) log('vanish skipped: no person mask yet');
         state.wantVanish = false;
       }
+      if (state.cartoonFace) {
+        if (faceFrame && renderer.wantsCartoon && renderer.buildCartoon(faceFrame, state.cartoonFace, w, h)) log('cartoon facepalm ready');
+        state.cartoonFace = null;
+        faceFrame = null;
+      }
       if (detector.idle(now)) {
         detCtx.drawImage(source, 0, 0, det.width, det.height);
+        if (state.cartoonPending && now - state.cartoonPending > DETECT_TIMEOUT_MS) state.cartoonPending = 0; // result lost
+        if (renderer.wantsCartoon && !state.cartoonPending && now - startedAt >= CARTOON_AFTER_MS) {
+          if (!faceFrame || faceFrame.width !== w || faceFrame.height !== h) faceFrame = new OffscreenCanvas(w, h);
+          faceFrame.getContext('2d').drawImage(source, 0, 0, w, h);
+          state.cartoonPending = now;
+        }
         if (detector.send(det.transferToImageBitmap(), now)) segCtx.drawImage(source, 0, 0, w, h);
       }
       renderer.draw(ctx, source, w, h, now, DEV && state.debug ? debugInfo() : null);
@@ -296,9 +316,12 @@
   }
 
   // The empty background photo is for this call only: forget it once no camera is running.
+  // The cartoon facepalm likewise: a new camera session makes a new one.
   function cameraStopped() {
     state.cameras = Math.max(0, state.cameras - 1);
-    if (state.cameras || !renderer.bgPhoto) return;
+    if (state.cameras) return;
+    if (renderer.hasCartoon) { renderer.clearCartoon(); log('cartoon facepalm cleared (camera stopped)'); }
+    if (!renderer.bgPhoto) return;
     clearBackground();
     log('background photo cleared (camera stopped)');
   }
@@ -585,6 +608,8 @@
       // Meet is sending a processed copy of the camera (blur / background
       // picture). Its passthrough copy counts too, so this is a hint only.
       meetEffect: meetSending(),
+      // The facepalm will show the cartoon of your face (built on this device).
+      cartoonReady: renderer.hasCartoon,
       thumb: state.thumb,
       settings: state.settings,
     };
@@ -650,6 +675,7 @@
     setSetting,
     get hasCamera() { return controller.hasCamera; },
     get bgPhoto() { return renderer.bgPhoto; },
+    get hasCartoon() { return renderer.hasCartoon; },
     captureBackground,
     clearBackground,
     get mode() { return renderer.mode; },

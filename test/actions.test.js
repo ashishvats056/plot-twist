@@ -41,11 +41,11 @@ test('the master switch does not count as a gesture setting', () => {
 test('popup state from the page is sanitized before use', () => {
   assert.deepEqual(A.sanitizeState(null), null);
   const s = A.sanitizeState({
-    mode: 'vanished', hasCamera: 1, meetEffect: 1, countdown: 3.7, hasBackgroundPhoto: true,
+    mode: 'vanished', hasCamera: 1, meetEffect: 1, cartoonReady: 'yes', countdown: 3.7, hasBackgroundPhoto: true,
     thumb: 'data:image/jpeg;base64,AAAA', settings: { autoSnap: true }, extra: 'x',
   });
   assert.deepEqual(s, {
-    mode: 'vanished', hasCamera: true, meetEffect: true, countdown: 4, hasBackgroundPhoto: true,
+    mode: 'vanished', hasCamera: true, meetEffect: true, cartoonReady: true, countdown: 4, hasBackgroundPhoto: true,
     thumb: 'data:image/jpeg;base64,AAAA', settings: { ...A.DEFAULT_SETTINGS, autoSnap: true },
   });
   const bad = A.sanitizeState({ mode: '<img>', countdown: 1e9, thumb: 'javascript:alert(1)' });

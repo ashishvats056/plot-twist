@@ -61,6 +61,7 @@
       countdown: countdown > 0 && countdown <= MAX_COUNTDOWN_S ? countdown : 0,
       hasBackgroundPhoto: !!raw.hasBackgroundPhoto,
       meetEffect: !!raw.meetEffect,
+      cartoonReady: !!raw.cartoonReady,
       thumb,
       settings: sanitizeSettings(raw.settings),
     };
@@ -72,7 +73,7 @@
     return [
       {
         id: 'vanish',
-        icon: '🫰',
+        icon: '💨',
         label: () => (c.mode === 'vanished' ? 'Return' : 'Vanish'),
         enabled: () => c.hasCamera && (c.mode === 'visible' || c.mode === 'vanished'),
         run: () => c.trigger('snap'),

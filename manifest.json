@@ -44,6 +44,7 @@
         "src/actions.js",
         "src/background.js",
         "src/vanish.js",
+        "src/cartoon.js",
         "src/effects.js",
         "src/inject.js"
       ],

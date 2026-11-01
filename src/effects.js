@@ -1,4 +1,6 @@
 // Draws the outgoing video: live frame (via PlotTwistVanish) + cinema, facepalm, money rain.
+// The facepalm is, in order of preference: a local image in assets/ (never in
+// the store build), a cartoon of your face (PlotTwistCartoon), or the 🤦 emoji.
 // Everything is drawn on the camera frame (draw). When Google Meet sends a
 // processed copy of it instead (background blur/replacement), redrawOverlays
 // paints the same overlays on Meet's frame too, because Meet's background
@@ -15,6 +17,8 @@
   const MONEY_MS = 4500;
   const MONEY_NOTES = 70;
   const FADE_MS = 250;
+  // Colour emoji on macOS, Windows, ChromeOS/Linux.
+  const EMOJI_FONTS = '"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", "Segoe UI Symbol", sans-serif';
 
   const makeCanvas = (w, h) => {
     const c = new OffscreenCanvas(w, h);
@@ -91,6 +95,7 @@
     const noteSprite = makeNoteSprite();
     const s = { cinemaAt: -Infinity, facepalmAt: -Infinity, moneyAt: -Infinity };
     let facepalmMedia = null;
+    const cartoon = root.PlotTwistCartoon ? root.PlotTwistCartoon.createCartoonFacepalm() : null;
 
     function drawCinema(ctx, now) {
       const e = now - s.cinemaAt;
@@ -127,15 +132,14 @@
       if (frame) {
         ctx.globalAlpha = (facepalmMedia.frames.length > 1 ? ANIMATED_ALPHA : STILL_ALPHA) * a;
         drawCover(ctx, frame.bitmap, w, h);
+      } else if (cartoon && cartoon.ready) {
+        cartoon.draw(ctx, e, w, h, a);
       } else {
         ctx.globalAlpha = 0.9 * a;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.font = `${Math.round(h * 0.45)}px "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif`;
-        ctx.fillText('\u{1F926}', w / 2, h * 0.45);
-        ctx.fillStyle = '#fff';
-        ctx.font = `italic 700 ${Math.round(h * 0.07)}px Georgia, serif`;
-        ctx.fillText('*facepalm*', w / 2, h * 0.85);
+        ctx.font = `${Math.round(h * 0.45)}px ${EMOJI_FONTS}`;
+        ctx.fillText('\u{1F926}', w / 2, h * 0.5);
       }
       ctx.restore();
     }
@@ -204,6 +208,12 @@
           && media.frames.every((f) => f && f.bitmap && f.ms > 0);
         facepalmMedia = ok ? media : null;
       },
+      // The cartoon facepalm, built once per camera session from a frame
+      // with your face in it. Not needed when a local image is set.
+      get wantsCartoon() { return !!cartoon && !cartoon.ready && !facepalmMedia; },
+      get hasCartoon() { return !!cartoon && cartoon.ready; },
+      buildCartoon: (source, face, sw, sh) => !!cartoon && cartoon.build(source, face, sw, sh),
+      clearCartoon() { if (cartoon) cartoon.clear(); },
       setMask: (source, mask, sw, sh, learn, hands) => vanish.setMask(source, mask, sw, sh, learn, hands),
       vanish: (now, source, sw, sh) => vanish.vanish(now, source, sw, sh),
       reappear: (now) => vanish.reappear(now),
