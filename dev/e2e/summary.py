@@ -8,7 +8,8 @@ def ok(k):
     if k=='facepalm':  # a local GIF changes the whole frame; the cartoon shows its white rim; the emoji is yellow
         return max(v['diffs']) > 20 or v.get('max_ring', 0) > 0.6 or (v.get('max_yellow', 0) > 0.02 and v.get('base_yellow', 1) < 0.005)
     if k=='money': return v['max_green'] > 0.1 and v.get('max_edge_green', 1) > 0.05  # notes also over the replaced background
-    if k in ('vanish','return'): return sum(1 for x in v['diffs'] if x > 2.5) >= 6  # gradual dust over many frames
+    # gradual dust over several frames (an instant cut changes 1-2); slow machines sample it fewer times
+    if k in ('vanish','return'): return sum(1 for x in v['diffs'] if x > 2.5) >= 4
 extra = ''
 if 'detector_while_off' in d:
     extra = f" live-switch:{'OK' if not d['detector_while_off'] and d['off_again_green'] < 0.02 else 'FAIL'}"

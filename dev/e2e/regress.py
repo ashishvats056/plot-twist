@@ -154,13 +154,19 @@ async def main():
             await pg.evaluate("chrome.storage.sync.set({enabled: true})")
         tid = await pg.evaluate("""chrome.tabs.query({}).then(async ts => { for (const t of ts) { try { if (await chrome.tabs.sendMessage(t.id, {type:'getState'})) return t.id; } catch {} } })""")
         q = lambda m: pg.evaluate(f"chrome.tabs.sendMessage({tid}, {json.dumps(m)})")
+        # Effects are started with the in-call keyboard shortcuts. The popup
+        # shares the extension's process with the busy detector frame, so on a
+        # slow machine a popup button can land seconds late, after the window
+        # the samples below look at.
+        await page.bring_to_front()
+        KEY = {'cinema': 'KeyC', 'facepalm': 'KeyF', 'doubleSnap': 'KeyM', 'snap': 'KeyS'}
         await page.wait_for_timeout(6000)  # detector warm-up + person mask
         res['state'] = {k: v for k, v in (await q({'type': 'getState'}))['state'].items() if k != 'thumb'}
         shots = []
         async def run(label, event, ms, every=150):
             await page.evaluate('sample()')
             base = await page.evaluate('sample()')
-            await q({'type': 'trigger', 'event': event})
+            await page.keyboard.press('Alt+Shift+' + KEY[event])
             series = []; rings = []
             for i in range(ms // every):
                 await page.wait_for_timeout(every)
@@ -200,7 +206,7 @@ async def main():
         if TAG == 'live':  # and off again: money must not show
             await pg.evaluate("chrome.storage.sync.set({enabled: false})")
             await page.wait_for_timeout(500)
-            await q({'type': 'trigger', 'event': 'doubleSnap'})
+            await page.keyboard.press('Alt+Shift+KeyM')
             g = 0
             for i in range(8):
                 await page.wait_for_timeout(250); g = max(g, (await page.evaluate('sample()'))['green'])
