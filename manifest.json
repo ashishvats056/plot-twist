@@ -22,6 +22,9 @@
   "permissions": [
     "storage"
   ],
+  "host_permissions": [
+    "https://meet.google.com/*"
+  ],
   "content_scripts": [
     {
       "matches": [

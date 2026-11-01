@@ -77,7 +77,7 @@
   // [text, tone]: tone colours the status dot (ok / warn / busy / off).
   function status() {
     if (noContentScript) return ['Reload this Meet tab to use Plot Twist.', 'warn'];
-    if (!state) return ['Open a Meet call with your camera on.', 'off'];
+    if (!state) return ['Open a Meet call with your camera on. Already in one? Reload the Meet tab.', 'off'];
     if (!settings.enabled) return ['Effects off. Your camera is sent unchanged.', 'off'];
     if (!state.hasCamera) return ['Turn your camera on in Meet.', 'warn'];
     if (state.countdown) return [`Step out of frame… ${state.countdown}`, 'busy'];
