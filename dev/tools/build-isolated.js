@@ -8,12 +8,14 @@ const path = require('path');
 const root = path.join(__dirname, '..', '..');
 const SHARED = ['actions.js', 'channel.js'];
 const check = process.argv.includes('--check');
+// Git on Windows may check files out with CRLF line endings
+const read = (p) => fs.readFileSync(p, 'utf8').replace(/\r\n/g, '\n');
 let stale = false;
 for (const name of SHARED) {
-  const src = fs.readFileSync(path.join(root, 'src', name), 'utf8');
+  const src = read(path.join(root, 'src', name));
   const out = `// GENERATED from src/${name} by dev/tools/build-isolated.js. Do not edit.\n${src}`;
   const dest = path.join(root, 'src', 'isolated', name);
-  const current = fs.existsSync(dest) ? fs.readFileSync(dest, 'utf8') : null;
+  const current = fs.existsSync(dest) ? read(dest) : null;
   if (current === out) continue;
   stale = true;
   if (!check) fs.writeFileSync(dest, out);
