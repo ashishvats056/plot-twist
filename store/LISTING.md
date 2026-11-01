@@ -19,7 +19,7 @@ Click the Plot Twist icon in the toolbar during a call, then:
 • Vanish: you dissolve into dust and disappear, while your background stays live. Click Return to re-form.
 • Money rain: banknotes fall across your video.
 • Absolute Cinema: your video turns black-and-white with a dramatic title. You can also trigger it by raising both hands.
-• Facepalm: a reaction overlay for those moments.
+• Facepalm: a cartoon of your own face facepalming, made on your device (or the 🤦 emoji).
 
 Everyone in the call sees the effects. Only you see the controls.
 
@@ -31,7 +31,7 @@ Private by design
 • Everything runs on your device. No servers, no analytics, no network requests.
 • Your video goes only where Meet already sends it.
 • The microphone is used only if you turn on snap detection.
-• Only your settings are saved.
+• Only your settings are saved. The cartoon of your face stays in memory and is deleted when your camera stops.
 • The master Effects switch passes your camera through untouched.
 
 Works on meet.google.com. Requires a recent version of Chrome.
@@ -53,6 +53,9 @@ Works on meet.google.com. Requires a recent version of Chrome.
 4. Money rain frame.
 5. Popup in dark mode.
 
+## Promo images
+- Small promo tile (440×280): `python3 dev/tools/make_promo.py` writes `dist/store-assets/promo-small-440x280.png`.
+
 ## Notes before submitting
 - Don't name the dust effect after any film or comic character in the listing, the screenshots or the promo images.
-- Ship a facepalm image you have the rights to, or none (the emoji placeholder). The local `assets/facepalm.gif` is a film clip and is excluded from the store zip.
+- Ship a facepalm image you have the rights to, or none (the default: the cartoon of the user's face, or the 🤦 emoji). The local `assets/facepalm.gif` is a film clip and is excluded from the store zip.

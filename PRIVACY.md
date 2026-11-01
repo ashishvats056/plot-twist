@@ -1,6 +1,6 @@
 # Plot Twist privacy policy
 
-_Last updated: 30 October 2026_
+_Last updated: 1 November 2026_
 
 Plot Twist is a Chrome extension that adds visual effects to your camera in
 Google Meet. It is built to work entirely on your device.
@@ -27,6 +27,11 @@ All processing happens in memory, in your browser, on your device.
 - **Empty background photo** (only if you click "Capture empty background"). One frame is
   kept in memory for that tab. It is deleted when your camera stops, when you
   reload or leave the page, or when you click ✕. It is never written to disk.
+- **Cartoon facepalm.** Shortly after your camera starts, Plot Twist crops your
+  face from one camera frame and turns it into a cartoon on your device. It is
+  only shown in your video when you trigger the facepalm. It is kept in memory
+  for that camera session, deleted when your camera stops, and never written to
+  disk or sent anywhere.
 
 ## What it stores
 

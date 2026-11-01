@@ -5,10 +5,10 @@
 | Trigger | Effect |
 |---|---|
 | Raise both hands, palms showing (automatic, can be switched off) | Black-and-white **ABSOLUTE CINEMA** |
-| **🫰 Vanish** button | You dissolve into dust and vanish |
-| **🫰 Return** button | You reassemble |
+| **💨 Vanish** button | You dissolve into dust and vanish |
+| **💨 Return** button | You reassemble |
 | **💸 Money rain** button | Money rains down |
-| **🤦 Facepalm** button | Facepalm overlay |
+| **🤦 Facepalm** button | A cartoon of you facepalming (or the 🤦 emoji) |
 | **🎬 Cinema** button | Absolute Cinema without raising your hands |
 
 Click the button while you act out the gesture (snap, facepalm), and it looks like the gesture did it.
@@ -50,13 +50,17 @@ Add an entry to `createActions` in `src/actions.js` (`id`, `icon`, `label`, `ena
 | Alt+Shift+F | Facepalm |
 | Alt+Shift+D | Debug overlay (local harness only) |
 
+### The facepalm
+
+By default the facepalm is a round cartoon sticker of your own face, with a cartoon hand slapping your forehead. About 1.5 s after your camera starts, the extension takes one frame in which the face detector finds your face, crops the face and cartoonises it with canvas filters (flat colour bands and ink outlines). This all happens on your device, with no model download and no network. The cartoon is kept in memory only. It is never saved, and it's deleted when your camera stops, so each camera session makes a new one. Until it's ready, or if no face is found, the facepalm is the 🤦 emoji.
+
 ### Your own facepalm image
 
 Save an animated GIF as `assets/facepalm.gif`, or a still image as `assets/facepalm.png` (`.jpg` and `.webp` also work). Then click the reload icon on the extension in `chrome://extensions` and reload the Meet tab.
 
 - An **animated GIF** plays once, full frame, as a reaction cut-away, then fades out. The effect lasts as long as the GIF (between 1.5 and 6 s). Frames are decoded once in the detector with Chrome's built-in `ImageDecoder` and scaled to at most 960 px; GIFs longer than 120 frames are cut.
 - A **still image** is blended over you for 2.5 s.
-- Without either, a 🤦 emoji placeholder is shown.
+- Without either, you get the cartoon of your face (or the 🤦 emoji).
 
 Only bundle an image you have the rights to. `assets/facepalm.gif` is git-ignored here because the local one is a film clip.
 
@@ -83,8 +87,20 @@ Nothing leaves your machine. All detection runs locally. The extension runs only
 
 ```bash
 node dev/tools/build-isolated.js   # after editing src/actions.js or src/channel.js
-node --test test/*.test.js
+node --test "test/*.test.js"
 ```
+
+Works the same on macOS, Windows and Linux (Node 22+, Python 3.9+). Use `python` instead of `python3` on Windows.
+
+Browser test: it loads the store file set in headless Chromium with a fake camera (pictures in `dev/e2e/fixtures/`), joins a Meet-like page over a WebRTC loopback, and checks every effect on the self view and at the far end. It never uses your local `assets/facepalm.gif`.
+
+```bash
+pip install playwright pillow && python3 -m playwright install chromium
+python3 dev/e2e/run.py --quick   # 4 key scenarios, about 1–2 min
+python3 dev/e2e/run.py           # all 14 scenarios
+```
+
+Contact sheets of each run are written to `dev/e2e/out/`. GitHub Actions (`.github/workflows/test.yml`) runs the unit and browser tests on Windows, macOS and Linux on every push.
 
 To try it without Meet, serve this folder and open the test page. It uses your webcam, or `?clip=<video url>` to use a video file as the camera:
 
@@ -111,9 +127,10 @@ node dev/tools/replay-recording.js "$PWD/src/gestures.js" dev/recordings/<file>.
 ## Publishing
 
 ```bash
-sh dev/tools/package.sh   # checks, runs the tests, writes dist/plot-twist-<version>.zip
+python3 dev/tools/package.py     # checks, runs the tests, writes dist/plot-twist-<version>.zip
+python3 dev/tools/make_promo.py  # store promo tile: dist/store-assets/promo-small-440x280.png
 ```
 
-The zip contains only the runtime files, the licences and the notices. It never includes `dev/`, `test/`, `tmp/`, `store/`, `HANDOFF.md` or `assets/facepalm.gif`. The store listing draft is in `store/LISTING.md`, and the privacy policy is in `PRIVACY.md`.
+The zip contains only the runtime files, the licences and the notices. The file list is `dev/tools/store-files.txt`, the same set the browser test runs. It never includes `dev/`, `test/`, `tmp/`, `store/`, `HANDOFF.md` or `assets/facepalm.gif`. The store listing draft is in `store/LISTING.md`, and the privacy policy is in `PRIVACY.md`.
 
 Bundled: MediaPipe Tasks Vision 0.10.35 (`vendor/`), plus the hand landmarker, BlazeFace short-range and selfie segmenter models (`models/`). All are Apache-2.0; see `THIRD_PARTY_NOTICES.md` and `LICENSE-APACHE-2.0.txt`.
