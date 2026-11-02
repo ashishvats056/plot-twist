@@ -2,11 +2,13 @@ import json,sys
 t=sys.stdin.read(); i=t.rfind('{"tag"')
 if i<0: print(t[-2000:]); sys.exit()
 d=json.loads(t[i:])
+# the cartoon sticker's light-blue backdrop filling its disc (survives a blurry, low-res frame)
+sticker = lambda v: v.get('max_disc', 0) > 0.5 and v.get('base_disc', 1) < 0.1
 def ok(k):
     v=d[k]
     if k=='cinema': return v['min_sat'] < v['base_sat']*0.3
     if k=='facepalm':  # a local GIF changes the whole frame; the cartoon shows its white rim; the emoji is yellow; your own test picture is magenta
-        return max(v['diffs']) > 20 or v.get('max_ring', 0) > 0.6 or (v.get('max_yellow', 0) > 0.02 and v.get('base_yellow', 1) < 0.005) \
+        return max(v['diffs']) > 20 or v.get('max_ring', 0) > 0.6 or sticker(v) or (v.get('max_yellow', 0) > 0.02 and v.get('base_yellow', 1) < 0.005) \
             or (v.get('max_magenta', 0) > 0.3 and v.get('base_magenta', 1) < 0.01)
     if k=='money': return v['max_green'] > 0.1 and v.get('max_edge_green', 1) > 0.05  # notes also over the replaced background
     # The dust is gradual: 10% to 90% of the motion takes about a second or
@@ -38,8 +40,8 @@ if d.get('mode') == 'bgpic':
 if 'cartoon_ready' in d:
     f = d['facepalm']
     if f.get('max_magenta', 0) > 0.3 and f.get('base_magenta', 1) < 0.01: kind = 'custom'
-    elif d['cartoon_ready'] and f['max_ring'] > 0.6: kind = 'cartoon'
+    elif d['cartoon_ready'] and (f['max_ring'] > 0.6 or sticker(f)): kind = 'cartoon'
     elif not d['cartoon_ready'] and f['max_yellow'] > 0.02 and f['base_yellow'] < 0.005: kind = 'emoji'
-    else: kind = f"unclear(ready={d['cartoon_ready']},ring={f['max_ring']},yellow={f['max_yellow']})"
+    else: kind = f"unclear(ready={d['cartoon_ready']},ring={f['max_ring']},disc={f.get('max_disc')},frames={f.get('frames')},yellow={f['max_yellow']})"
     extra += f" facepalm-kind:{kind}"
 print(sys.argv[1], 'view=' + str(d.get('viewer')), ' '.join(f"{k}:{'OK' if ok(k) else 'FAIL'}" for k in ['cinema','facepalm','money','vanish','return']), extra.strip(), 'errors', d['errors'])

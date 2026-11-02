@@ -158,15 +158,38 @@ window.rec = (() => {
     const n = d.length / 4;
     return { sat: +(sat / n).toFixed(1), green: +(green / n).toFixed(3), edgeGreen: +(edgeGreen / n).toFixed(3), blue: +(blue / n).toFixed(3), blueIn: +(blueIn / (84 * 84)).toFixed(3), yellow: +(yellow / n).toFixed(3), magenta: +(magenta / n).toFixed(3), diff: +(diff / n / 3).toFixed(2) };
   };
+  // Each angle looks across the rim's width (0.33 h × 1.01–1.08), not one
+  // radius: a starved encoder blurs and shrinks the 3-pixel rim, and the
+  // sticker may still be popping in (slightly smaller or larger).
   const ringOf = (d) => {
-    const R = 0.33 * RH * 1.045; let n = 0, white = 0;
+    const R = 0.33 * RH; let n = 0, white = 0;
     for (let i = 0; i < 720; i++) {
-      const a = (i / 720) * Math.PI * 2, px = Math.round(RW / 2 + Math.cos(a) * R), py = Math.round(RH / 2 + Math.sin(a) * R);
-      if (py < 0 || py >= RH) continue;
-      const k = (py * RW + px) * 4; n++;
-      if (d[k] > 215 && d[k + 1] > 215 && d[k + 2] > 215) white++;
+      const a = (i / 720) * Math.PI * 2, c = Math.cos(a), s = Math.sin(a);
+      let seen = false, inside = false;
+      for (let q = 1.01; q <= 1.081; q += 0.01) {
+        const px = Math.round(RW / 2 + c * R * q), py = Math.round(RH / 2 + s * R * q);
+        if (py < 0 || py >= RH) continue;
+        inside = true;
+        const k = (py * RW + px) * 4;
+        if (d[k] > 200 && d[k + 1] > 200 && d[k + 2] > 200) { seen = true; break; }
+      }
+      if (!inside) continue;
+      n++; if (seen) white++;
     }
     return +(white / n).toFixed(2);
+  };
+  // The sticker's light-blue backdrop near its edge (0.75–0.97 of its
+  // radius, mostly clear of the character): a large area, so it survives a
+  // starved encoder dropping the resolution, which wipes out the thin rim.
+  const discOf = (d) => {
+    const R = 0.33 * RH; let n = 0, blue = 0;
+    for (let py = 0; py < RH; py++) for (let px = 0; px < RW; px++) {
+      const q = Math.hypot(px - RW / 2, py - RH / 2) / R;
+      if (q < 0.75 || q > 0.97) continue;
+      const k = (py * RW + px) * 4, r = d[k], g = d[k + 1], b = d[k + 2]; n++;
+      if (b > 200 && b - r > 15 && b >= g) blue++;
+    }
+    return +(blue / n).toFixed(2);
   };
   const jpeg = (d) => { const o = new OffscreenCanvas(W, H); o.getContext('2d').putImageData(new ImageData(new Uint8ClampedArray(d), W, H), 0, 0); return o.convertToBlob({ type: 'image/jpeg', quality: 0.7 }).then((b) => new Promise((r) => { const f = new FileReader(); f.onload = () => r(f.result); f.readAsDataURL(b); })); };
   return {
@@ -190,6 +213,10 @@ window.rec = (() => {
       const b = stats(base.d, null); if (base.r) b.ring = ringOf(base.r);
       const inWin = frames.filter((f) => f.t > pressAt && f.t <= pressAt + ms);
       const n = inWin.length;
+      // the rim, on every frame received (not just the picks): few frames arrive on a busy runner
+      const ringAll = inWin.reduce((m, f) => (f.r ? Math.max(m, ringOf(f.r)) : m), 0);
+      const discAll = inWin.reduce((m, f) => (f.r ? Math.max(m, discOf(f.r)) : m), 0);
+      if (base.r) b.disc = discOf(base.r);
       // How gradual the change is, whatever the frame rate: the motion between
       // consecutive frames received (above the camera's noise), and the time
       // from 10% to 90% of all of it. An instant cut is all in one frame
@@ -205,7 +232,7 @@ window.rec = (() => {
       for (const f of inWin) { gap = Math.max(gap, f.t - prevT); prevT = f.t; }
       rise.gap = Math.round(Math.max(gap, pressAt + ms - prevT));
       frames = [];
-      return { base: b, series, shots, frames: n, rise };
+      return { base: b, series, shots, frames: n, rise, ringAll, discAll };
     },
   };
 })();
@@ -277,7 +304,8 @@ async def main():
                           'diffs': [s['diff'] for s in series if s['diff'] is not None], 'frames': r['frames'], 'rise': r['rise'],
                           'max_yellow': max(s['yellow'] for s in series), 'base_yellow': base['yellow'],
                           'max_magenta': max(s['magenta'] for s in series), 'base_magenta': base['magenta'],
-                          'max_ring': max(s.get('ring', 0) for s in series), 'base_ring': base.get('ring', 0)}
+                          'max_ring': max([r.get('ringAll', 0)] + [s.get('ring', 0) for s in series]), 'base_ring': base.get('ring', 0),
+                          'max_disc': r.get('discAll', 0), 'base_disc': base.get('disc', 0)}
             await page.wait_for_timeout(1500)
         if TAG == 'photo':  # capture an empty background first (the "person" stays: fine for timing)
             await q({'type': 'captureBackground'})
