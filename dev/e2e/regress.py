@@ -127,6 +127,11 @@ window.ring = () => {
 };
 </script>""".replace('%MODE%', MODE).replace('%VIEW%', VIEW)
 
+import time
+T0 = time.time()
+def step(msg):  # progress on stderr, kept by run.py if the scenario times out
+    print(f'[{time.time() - T0:5.1f}s] {msg}', file=sys.stderr, flush=True)
+
 async def main():
     async with async_playwright() as p:
         ctx = await p.chromium.launch_persistent_context(PROFILE, headless=True, channel='chromium',
@@ -137,7 +142,7 @@ async def main():
         await ctx.route('https://meet.google.com/**', lambda r: r.fulfill(status=200, content_type='text/html', body=STUB))
         page = await ctx.new_page(); errs = []
         page.on('pageerror', lambda e: errs.append(str(e)))
-        await page.goto('https://meet.google.com/abc')
+        step('browser up'); await page.goto('https://meet.google.com/abc')
         pg = await ctx.new_page(); await pg.goto('chrome://extensions')
         # wait for the list rather than a fixed delay (slow CI machines)
         item = "document.querySelector('extensions-manager')?.shadowRoot?.querySelector('extensions-item-list')?.shadowRoot?.querySelector('extensions-item')"
@@ -147,7 +152,7 @@ async def main():
         if TAG == 'live':  # join with effects off, switch them on mid-call
             await pg.evaluate("chrome.storage.sync.set({enabled: false})")
             await page.wait_for_timeout(300)
-        res = {'tag': TAG, 'effect': EFFECT, 'connected': await page.evaluate('join()')}
+        step('popup open'); res = {'tag': TAG, 'effect': EFFECT, 'connected': await page.evaluate('join()')}; step('joined')
         if TAG == 'live':
             await page.wait_for_timeout(1500)
             res['detector_while_off'] = await page.evaluate("!!document.getElementById('plottwist-detector')")
@@ -157,13 +162,21 @@ async def main():
         # Effects are started with the in-call keyboard shortcuts. The popup
         # shares the extension's process with the busy detector frame, so on a
         # slow machine a popup button can land seconds late, after the window
-        # the samples below look at.
-        await page.bring_to_front()
+        # the samples below look at. (The call tab is not brought to the front:
+        # on a machine without a GPU that made a scenario twice as slow.)
         KEY = {'cinema': 'KeyC', 'facepalm': 'KeyF', 'doubleSnap': 'KeyM', 'snap': 'KeyS'}
-        await page.wait_for_timeout(6000)  # detector warm-up + person mask
+        if TAG == 'custom':  # your own facepalm picture, set mid-call from the editor's storage key
+            await pg.evaluate("""(async () => {
+              const c = new OffscreenCanvas(64, 36); const x = c.getContext('2d'); x.fillStyle = '#ff00ff'; x.fillRect(0, 0, 64, 36);
+              const b = await c.convertToBlob({ type: 'image/png' });
+              const url = await new Promise(r => { const f = new FileReader(); f.onload = () => r(f.result); f.readAsDataURL(b); });
+              await chrome.storage.local.set({ customFacepalm: { kind: 'image', dataUrl: url } });
+            })()""")
+        step('tab found'); await page.wait_for_timeout(6000)  # detector warm-up + person mask
         res['state'] = {k: v for k, v in (await q({'type': 'getState'}))['state'].items() if k != 'thumb'}
         shots = []
         async def run(label, event, ms, every=150):
+            step(label)
             await page.evaluate('sample()')
             base = await page.evaluate('sample()')
             await page.keyboard.press('Alt+Shift+' + KEY[event])
@@ -185,14 +198,6 @@ async def main():
             await q({'type': 'captureBackground'})
             await page.wait_for_timeout(5800)
             res['has_photo'] = (await q({'type': 'getState'}))['state'].get('hasBackgroundPhoto')
-        if TAG == 'custom':  # your own facepalm picture, set mid-call from the editor's storage key
-            await pg.evaluate("""(async () => {
-              const c = new OffscreenCanvas(64, 36); const x = c.getContext('2d'); x.fillStyle = '#ff00ff'; x.fillRect(0, 0, 64, 36);
-              const b = await c.convertToBlob({ type: 'image/png' });
-              const url = await new Promise(r => { const f = new FileReader(); f.onload = () => r(f.result); f.readAsDataURL(b); });
-              await chrome.storage.local.set({ customFacepalm: { kind: 'image', dataUrl: url } });
-            })()""")
-            await page.wait_for_timeout(1500)
         await run('cinema', 'cinema', 2400)
         res['cartoon_ready'] = (await q({'type': 'getState'}))['state'].get('cartoonReady')
         await run('facepalm', 'facepalm', 2400)

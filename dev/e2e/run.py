@@ -92,9 +92,10 @@ def attempt(name, ext):
     text = dict(capture_output=True, text=True, encoding='utf-8', errors='replace', env=env)
     try:
         p = subprocess.run([sys.executable, os.path.join(HERE, 'regress.py'), ext, *args], timeout=300, **text)
-        out = p.stdout + p.stderr
-    except subprocess.TimeoutExpired:
-        out = 'timed out after 300 s'
+        out = p.stderr + p.stdout  # the result line (stdout) last, where summary.py looks
+    except subprocess.TimeoutExpired as e:
+        err = e.stderr.decode('utf-8', 'replace') if isinstance(e.stderr, bytes) else (e.stderr or '')
+        out = 'timed out after 300 s; last steps: ' + ' | '.join(l for l in err.splitlines() if l.startswith('['))[-600:]
     s = subprocess.run([sys.executable, os.path.join(HERE, 'summary.py'), name], input=out, **text)
     line = s.stdout.strip() or out[-800:]
     ok = all(w in line for w in want) and 'FAIL' not in line and "errors []" in line

@@ -34,8 +34,11 @@ jobs:
         run: |
           python -m pip install playwright==1.61.0 pillow
           python -m playwright install --with-deps chromium
+      # The Linux and Windows runners have no GPU: Chromium runs the detector
+      # in software and a scenario is several times slower than on macOS, so
+      # they run the quick set, one browser at a time. macOS runs everything.
       - name: Browser test (headless Chromium, fake camera)
-        run: python dev/e2e/run.py --jobs 2
+        run: python dev/e2e/run.py ${{ matrix.os == 'macos-latest' && '--jobs 2' || '--quick --jobs 1' }}
         env:
           PYTHONUTF8: '1'
       - name: Contact sheets
