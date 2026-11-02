@@ -199,6 +199,11 @@ window.rec = (() => {
       for (const f of inWin) { const m = step(f.d, last); last = f.d; if (m > 1) total += m; cum.push([f.t - pressAt, total]); }
       const first = (q) => { const p = cum.find((c) => c[1] >= q * total); return p ? p[0] : 0; };
       const rise = { total: +total.toFixed(1), ms: total ? Math.round(first(0.9) - first(0.1)) : 0 };
+      // The longest stretch with no frame: when it's long, the dust's spread
+      // in time can't be seen at all (the checks then judge the outcome only).
+      let gap = 0, prevT = pressAt;
+      for (const f of inWin) { gap = Math.max(gap, f.t - prevT); prevT = f.t; }
+      rise.gap = Math.round(Math.max(gap, pressAt + ms - prevT));
       frames = [];
       return { base: b, series, shots, frames: n, rise };
     },
@@ -288,6 +293,7 @@ async def main():
         await page.wait_for_timeout(800)
         sv = await page.evaluate('sample()'); res['blue_vanished'] = sv['blue']; res['blue_in_vanished'] = sv['blueIn']
         await run('return', 'snap', 2800, 100)
+        res['mode_after_return'] = (await q({'type': 'getState'}))['state']['mode']
         if TAG == 'live':  # and off again: money must not show
             await pg.evaluate("chrome.storage.sync.set({enabled: false})")
             await page.wait_for_timeout(500)

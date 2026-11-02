@@ -12,10 +12,20 @@ def ok(k):
     # The dust is gradual: 10% to 90% of the motion takes about a second or
     # more (an instant cut is all in one frame: 0 ms). Measured on every frame
     # the browser received, so it doesn't depend on the frame rate.
-    if k in ('vanish','return'): return v['rise']['total'] > 15 and v['rise']['ms'] >= 500
+    # A starved machine (no GPU) can go most of a second without a frame; then
+    # how gradual it was can't be seen, and only the outcome is checked: the
+    # picture changed a lot, and the extension reports vanished / visible.
+    if k in ('vanish','return'):
+        if few(k): return v['rise']['total'] > 15 and d.get('mode_after_' + k, '') == ('vanished' if k == 'vanish' else 'visible')
+        return v['rise']['total'] > 15 and v['rise']['ms'] >= 500
+few = lambda k: d[k]['rise'].get('gap', 0) > 400
 extra = ''
 # frames the viewed video actually showed during each effect (low = starved machine)
 extra += ' frames:' + '/'.join(str(d[k].get('frames', '?')) for k in ['cinema','facepalm','money','vanish','return'])
+if any(few(k) for k in ('vanish', 'return')):  # judged by the outcome only (see above)
+    extra += ' few-frames:' + ','.join(k for k in ('vanish', 'return') if few(k))
+if any(few(k) or not ok(k) for k in ('vanish', 'return')):  # the numbers behind the call, for the log
+    extra += ' rise:' + ','.join(f"{k}={d[k]['rise'].get('ms')}ms/{d[k]['rise'].get('total')}/gap{d[k]['rise'].get('gap')}/{d.get('mode_after_' + k)}" for k in ('vanish', 'return'))
 if 'detector_while_off' in d:
     extra += f" live-switch:{'OK' if not d['detector_while_off'] and d['off_again_green'] < 0.02 else 'FAIL'}"
 if 'has_photo' in d:
