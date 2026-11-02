@@ -111,20 +111,99 @@ window.sample = () => {
   prev = d; const n = d.length / 4; const bi = window.__blueIn || 0; window.__blueIn = 0;
   return { sat: +(sat / n).toFixed(1), green: +(green / n).toFixed(3), edgeGreen: +(edgeGreen / n).toFixed(3), blue: +(blue / n).toFixed(3), blueIn: +(bi / (84 * 84)).toFixed(3), yellow: +(yellow / n).toFixed(3), magenta: +(magenta / n).toFixed(3), diff: +(diff / n / 3).toFixed(2), img: c.toDataURL('image/jpeg', 0.7) };
 };
-// The cartoon sticker's white rim: share of white pixels on a thin ring at the
-// sticker's edge (radius 0.33 h × 1.045, centred).
-window.ring = () => {
-  const W = 320, H = 180, c = new OffscreenCanvas(W, H), x = c.getContext('2d', { willReadFrequently: true });
-  x.drawImage(document.getElementById(window.VIEW), 0, 0, W, H);
-  const d = x.getImageData(0, 0, W, H).data, R = 0.33 * H * 1.045; let n = 0, white = 0;
-  for (let i = 0; i < 720; i++) {
-    const a = (i / 720) * Math.PI * 2, px = Math.round(W / 2 + Math.cos(a) * R), py = Math.round(H / 2 + Math.sin(a) * R);
-    if (py < 0 || py >= H) continue;
-    const k = (py * W + px) * 4; n++;
-    if (d[k] > 215 && d[k + 1] > 215 && d[k + 2] > 215) white++;
+// The cartoon sticker's white rim (ringOf below): share of white pixels on a
+// thin ring at the sticker's edge (radius 0.33 h × 1.045, centred).
+// Frame recorder. Every frame of the viewed video's track is copied, with the
+// page's own clock, so a busy machine can't make the test miss an animation:
+// the browser records what it received, and Python reads the batch afterwards.
+// It reads the track itself (a clone), not the <video>: the call tab is in the
+// background here, and a hidden tab barely paints its videos.
+// The series is then picked at fixed steps after the key press (the frame
+// current at each step), the same shape the checks always used.
+window.rec = (() => {
+  let frames = [], on = false, wantRing = false, pressAt = null, reader = null;
+  const W = 160, H = 90, RW = 320, RH = 180;
+  const c = new OffscreenCanvas(W, H), x = c.getContext('2d', { willReadFrequently: true });
+  const rc = new OffscreenCanvas(RW, RH), rx = rc.getContext('2d', { willReadFrequently: true });
+  window.addEventListener('keydown', () => { if (on && pressAt === null) pressAt = performance.now(); }, true);
+  async function pump(track) {
+    reader = new MediaStreamTrackProcessor({ track }).readable.getReader();
+    for (;;) {
+      const { value: vf, done } = await reader.read();
+      if (done) break;
+      if (on) {
+        x.drawImage(vf, 0, 0, W, H);
+        const f = { t: performance.now(), d: x.getImageData(0, 0, W, H).data };
+        if (wantRing) { rx.drawImage(vf, 0, 0, RW, RH); f.r = rx.getImageData(0, 0, RW, RH).data; }
+        frames.push(f);
+      }
+      vf.close();
+    }
+    track.stop();
   }
-  return +(white / n).toFixed(2);
-};
+  const stats = (d, p) => {
+    let sat = 0, green = 0, diff = 0, edgeGreen = 0, blue = 0, blueIn = 0, yellow = 0, magenta = 0;
+    for (let i = 0; i < d.length; i += 4) {
+      const r = d[i], g = d[i+1], b = d[i+2];
+      const px = (i / 4) % 160, py = Math.floor(i / 4 / 160);
+      const outside = ((px - 80) / 35) ** 2 + ((py - 49.5) / 45) ** 2 > 1.15;
+      if (r > 200 && g > 140 && b < 90 && r - b > 130) yellow++;
+      if (r > 150 && b > 150 && g < 110) magenta++;
+      if (b > 180 && r < 70 && g > 60 && g < 130) { blue++; if (inBox(i)) blueIn++; }
+      if (outside && Math.abs(r - 95) < 30 && Math.abs(g - 159) < 30 && Math.abs(b - 90) < 30) edgeGreen++;
+      sat += Math.max(r, g, b) - Math.min(r, g, b);
+      if (Math.abs(r - 95) < 30 && Math.abs(g - 159) < 30 && Math.abs(b - 90) < 30) green++;
+      if (p) diff += Math.abs(r - p[i]) + Math.abs(g - p[i+1]) + Math.abs(b - p[i+2]);
+    }
+    const n = d.length / 4;
+    return { sat: +(sat / n).toFixed(1), green: +(green / n).toFixed(3), edgeGreen: +(edgeGreen / n).toFixed(3), blue: +(blue / n).toFixed(3), blueIn: +(blueIn / (84 * 84)).toFixed(3), yellow: +(yellow / n).toFixed(3), magenta: +(magenta / n).toFixed(3), diff: +(diff / n / 3).toFixed(2) };
+  };
+  const ringOf = (d) => {
+    const R = 0.33 * RH * 1.045; let n = 0, white = 0;
+    for (let i = 0; i < 720; i++) {
+      const a = (i / 720) * Math.PI * 2, px = Math.round(RW / 2 + Math.cos(a) * R), py = Math.round(RH / 2 + Math.sin(a) * R);
+      if (py < 0 || py >= RH) continue;
+      const k = (py * RW + px) * 4; n++;
+      if (d[k] > 215 && d[k + 1] > 215 && d[k + 2] > 215) white++;
+    }
+    return +(white / n).toFixed(2);
+  };
+  const jpeg = (d) => { const o = new OffscreenCanvas(W, H); o.getContext('2d').putImageData(new ImageData(new Uint8ClampedArray(d), W, H), 0, 0); return o.convertToBlob({ type: 'image/jpeg', quality: 0.7 }).then((b) => new Promise((r) => { const f = new FileReader(); f.onload = () => r(f.result); f.readAsDataURL(b); })); };
+  return {
+    start(ring) {
+      frames = []; on = true; wantRing = ring; pressAt = null;
+      if (!reader) pump(document.getElementById(window.VIEW).captureStream().getVideoTracks()[0]);
+    },
+    framesSeen: () => frames.length,
+    since: () => (pressAt === null ? -1 : performance.now() - pressAt),
+    async stop(ms, every) {
+      on = false;
+      const at = (t) => { let f = null; for (const g of frames) { if (g.t <= t) f = g; else break; } return f; };
+      const base = at(pressAt) || frames[0];
+      const picks = [];
+      for (let k = 1; k <= Math.floor(ms / every); k++) picks.push(at(pressAt + k * every) || base);
+      let prev = base;
+      // A pick that is still the previous frame (slow machine) has no diff of
+      // its own: the diffs list only real frame-to-frame changes.
+      const series = picks.map((f) => { const s = stats(f.d, prev.d); if (f === prev) s.diff = null; prev = f; if (f.r) s.ring = ringOf(f.r); return s; });
+      const shots = await Promise.all([0, 1, 2, 3].map((k) => jpeg(picks[Math.floor(picks.length * k / 4)].d)));
+      const b = stats(base.d, null); if (base.r) b.ring = ringOf(base.r);
+      const inWin = frames.filter((f) => f.t > pressAt && f.t <= pressAt + ms);
+      const n = inWin.length;
+      // How gradual the change is, whatever the frame rate: the motion between
+      // consecutive frames received (above the camera's noise), and the time
+      // from 10% to 90% of all of it. An instant cut is all in one frame
+      // (0 ms); the dust is spread over about two seconds.
+      const step = (a, p) => { let s = 0; for (let i = 0; i < a.length; i += 4) s += Math.abs(a[i] - p[i]) + Math.abs(a[i+1] - p[i+1]) + Math.abs(a[i+2] - p[i+2]); return s / (a.length / 4) / 3; };
+      let last = base.d, total = 0; const cum = [];
+      for (const f of inWin) { const m = step(f.d, last); last = f.d; if (m > 1) total += m; cum.push([f.t - pressAt, total]); }
+      const first = (q) => { const p = cum.find((c) => c[1] >= q * total); return p ? p[0] : 0; };
+      const rise = { total: +total.toFixed(1), ms: total ? Math.round(first(0.9) - first(0.1)) : 0 };
+      frames = [];
+      return { base: b, series, shots, frames: n, rise };
+    },
+  };
+})();
 </script>""".replace('%MODE%', MODE).replace('%VIEW%', VIEW)
 
 import time
@@ -177,22 +256,23 @@ async def main():
         shots = []
         async def run(label, event, ms, every=150):
             step(label)
-            await page.evaluate('sample()')
-            base = await page.evaluate('sample()')
+            await page.evaluate(f'rec.start({json.dumps(event == "facepalm")})')
+            # a few frames before the press, for the baseline
+            await page.wait_for_function('rec.framesSeen() >= 3', timeout=60000)
             await page.keyboard.press('Alt+Shift+' + KEY[event])
-            series = []; rings = []
-            for i in range(ms // every):
-                await page.wait_for_timeout(every)
-                s = await page.evaluate('sample()'); series.append(s)
-                if event == 'facepalm': rings.append(await page.evaluate('ring()'))
-            shots.extend([series[len(series) * k // 4]['img'] for k in range(4)])
+            # the window is timed by the page's clock from the press, however slow this side is
+            await page.wait_for_function(f'rec.since() >= {ms}', timeout=120000, polling=200)
+            r = await page.evaluate(f'rec.stop({ms}, {every})')
+            base, series = r['base'], r['series']
+            shots.extend(r['shots'])
+            step(f'{label}: {r["frames"]} frames')
             res[label] = {'base_sat': base['sat'], 'base_blue': base['blue'], 'min_sat': min(s['sat'] for s in series),
                           'max_green': max(s['green'] for s in series),
                           'max_edge_green': max(s['edgeGreen'] for s in series),
-                          'diffs': [s['diff'] for s in series],
+                          'diffs': [s['diff'] for s in series if s['diff'] is not None], 'frames': r['frames'], 'rise': r['rise'],
                           'max_yellow': max(s['yellow'] for s in series), 'base_yellow': base['yellow'],
                           'max_magenta': max(s['magenta'] for s in series), 'base_magenta': base['magenta'],
-                          'max_ring': max(rings) if rings else 0, 'base_ring': await page.evaluate('ring()') if rings else 0}
+                          'max_ring': max(s.get('ring', 0) for s in series), 'base_ring': base.get('ring', 0)}
             await page.wait_for_timeout(1500)
         if TAG == 'photo':  # capture an empty background first (the "person" stays: fine for timing)
             await q({'type': 'captureBackground'})

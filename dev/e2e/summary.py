@@ -5,18 +5,19 @@ d=json.loads(t[i:])
 def ok(k):
     v=d[k]
     if k=='cinema': return v['min_sat'] < v['base_sat']*0.3
-    if k=='facepalm':  # a local GIF changes the whole frame; the cartoon shows its white rim; the emoji is yellow
-        return max(v['diffs']) > 20 or v.get('max_ring', 0) > 0.6 or (v.get('max_yellow', 0) > 0.02 and v.get('base_yellow', 1) < 0.005)
+    if k=='facepalm':  # a local GIF changes the whole frame; the cartoon shows its white rim; the emoji is yellow; your own test picture is magenta
+        return max(v['diffs']) > 20 or v.get('max_ring', 0) > 0.6 or (v.get('max_yellow', 0) > 0.02 and v.get('base_yellow', 1) < 0.005) \
+            or (v.get('max_magenta', 0) > 0.3 and v.get('base_magenta', 1) < 0.01)
     if k=='money': return v['max_green'] > 0.1 and v.get('max_edge_green', 1) > 0.05  # notes also over the replaced background
-    # The dust is gradual: the change is spread over several samples, none
-    # holding most of it (an instant cut is one big change). Slow machines
-    # deliver few frames, so the sample count alone isn't a reliable sign.
-    if k in ('vanish','return'):
-        big = [x for x in v['diffs'] if x > 2.5]; total = sum(v['diffs'])
-        return len(big) >= 3 and total > 10 and max(v['diffs']) < 0.6 * total
+    # The dust is gradual: 10% to 90% of the motion takes about a second or
+    # more (an instant cut is all in one frame: 0 ms). Measured on every frame
+    # the browser received, so it doesn't depend on the frame rate.
+    if k in ('vanish','return'): return v['rise']['total'] > 15 and v['rise']['ms'] >= 500
 extra = ''
+# frames the viewed video actually showed during each effect (low = starved machine)
+extra += ' frames:' + '/'.join(str(d[k].get('frames', '?')) for k in ['cinema','facepalm','money','vanish','return'])
 if 'detector_while_off' in d:
-    extra = f" live-switch:{'OK' if not d['detector_while_off'] and d['off_again_green'] < 0.02 else 'FAIL'}"
+    extra += f" live-switch:{'OK' if not d['detector_while_off'] and d['off_again_green'] < 0.02 else 'FAIL'}"
 if 'has_photo' in d:
     v = d['vanish']['diffs']
     # A jump into the photo shows up as one frame changing far more than its neighbours.
