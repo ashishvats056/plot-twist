@@ -105,11 +105,13 @@ Browser test: it loads the store file set in headless Chromium with a fake camer
 
 ```bash
 pip install playwright pillow && python3 -m playwright install chromium
-python3 dev/e2e/run.py --quick   # 4 key scenarios, about 1–2 min
-python3 dev/e2e/run.py           # all 14 scenarios
+python3 dev/e2e/run.py --quick   # 5 key scenarios, about 2 min (longer on slow machines)
+python3 dev/e2e/run.py           # all 15 scenarios
 ```
 
-Contact sheets of each run are written to `dev/e2e/out/`. GitHub Actions (`.github/workflows/test.yml`) runs the unit and browser tests on Windows, macOS and Linux on every push.
+Contact sheets of each run are written to `dev/e2e/out/`. GitHub Actions (`.github/workflows/test.yml`) runs the unit tests, the package build and the browser test on Windows, macOS and Linux on every push: all 15 scenarios on macOS, the quick set on Windows and Linux (their runners have no GPU and are several times slower).
+
+Each result line shows `frames:` (video frames received per effect; low means a starved machine). On a slow machine the test adapts and says so: `few-frames:` (too few frames to judge the dust's smoothness, so the outcome is checked instead) and `stalled-again:` (the video froze during an overlay, so it was shown again). A failing scenario is retried once.
 
 To try it without Meet, serve this folder and open the test page. It uses your webcam, or `?clip=<video url>` to use a video file as the camera:
 
