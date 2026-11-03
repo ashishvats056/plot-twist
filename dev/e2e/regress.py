@@ -229,7 +229,9 @@ window.rec = (() => {
       // The longest stretch with no frame: when it's long, the dust's spread
       // in time can't be seen at all (the checks then judge the outcome only).
       let gap = 0, prevT = pressAt;
-      for (const f of inWin) { gap = Math.max(gap, f.t - prevT); prevT = f.t; }
+      let gapAt = 0;
+      for (const f of inWin) { if (f.t - prevT > gap) { gap = f.t - prevT; gapAt = Math.round(prevT - pressAt); } prevT = f.t; }
+      rise.gapAt = gapAt;
       rise.gap = Math.round(Math.max(gap, pressAt + ms - prevT));
       frames = [];
       return { base: b, series, shots, frames: n, rise, ringAll, discAll };
@@ -295,6 +297,21 @@ async def main():
             # the window is timed by the page's clock from the press, however slow this side is
             await page.wait_for_function(f'rec.since() >= {ms}', timeout=120000, polling=200)
             r = await page.evaluate(f'rec.stop({ms}, {every})')
+            # A starved runner can stall the video for most of the window, so
+            # a short overlay may play with no frame sent at all. Overlays can
+            # simply be shown again: keep the attempt with the shortest stall.
+            # (Not the vanish/return: they change the state.)
+            for again in range(2):
+                if event == 'snap' or r['rise']['gap'] <= 800: break
+                step(f'{label}: video stalled {r["rise"]["gap"]} ms, again')
+                res.setdefault('stalled', []).append(f'{label}:{r["rise"]["gap"]}ms')
+                await page.wait_for_timeout(1500)
+                await page.evaluate(f'rec.start({json.dumps(event == "facepalm")})')
+                await page.wait_for_function('rec.framesSeen() >= 3', timeout=60000)
+                await page.keyboard.press('Alt+Shift+' + KEY[event])
+                await page.wait_for_function(f'rec.since() >= {ms}', timeout=120000, polling=200)
+                r2 = await page.evaluate(f'rec.stop({ms}, {every})')
+                if r2['rise']['gap'] < r['rise']['gap']: r = r2
             base, series = r['base'], r['series']
             shots.extend(r['shots'])
             step(f'{label}: {r["frames"]} frames')

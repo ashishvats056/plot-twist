@@ -28,6 +28,8 @@ if any(few(k) for k in ('vanish', 'return')):  # judged by the outcome only (see
     extra += ' few-frames:' + ','.join(k for k in ('vanish', 'return') if few(k))
 if any(few(k) or not ok(k) for k in ('vanish', 'return')):  # the numbers behind the call, for the log
     extra += ' rise:' + ','.join(f"{k}={d[k]['rise'].get('ms')}ms/{d[k]['rise'].get('total')}/gap{d[k]['rise'].get('gap')}/{d.get('mode_after_' + k)}" for k in ('vanish', 'return'))
+if d.get('stalled'):  # overlays shown again because the camera feed paused (see regress.py)
+    extra += ' stalled-again:' + ','.join(d['stalled'])
 if 'detector_while_off' in d:
     extra += f" live-switch:{'OK' if not d['detector_while_off'] and d['off_again_green'] < 0.02 else 'FAIL'}"
 if 'has_photo' in d:
@@ -42,6 +44,6 @@ if 'cartoon_ready' in d:
     if f.get('max_magenta', 0) > 0.3 and f.get('base_magenta', 1) < 0.01: kind = 'custom'
     elif d['cartoon_ready'] and (f['max_ring'] > 0.6 or sticker(f)): kind = 'cartoon'
     elif not d['cartoon_ready'] and f['max_yellow'] > 0.02 and f['base_yellow'] < 0.005: kind = 'emoji'
-    else: kind = f"unclear(ready={d['cartoon_ready']},ring={f['max_ring']},disc={f.get('max_disc')},frames={f.get('frames')},yellow={f['max_yellow']})"
+    else: kind = f"unclear(ready={d['cartoon_ready']},ring={f['max_ring']},disc={f.get('max_disc')},frames={f.get('frames')},gap={f.get('rise', {}).get('gap')},yellow={f['max_yellow']})"
     extra += f" facepalm-kind:{kind}"
 print(sys.argv[1], 'view=' + str(d.get('viewer')), ' '.join(f"{k}:{'OK' if ok(k) else 'FAIL'}" for k in ['cinema','facepalm','money','vanish','return']), extra.strip(), 'errors', d['errors'])
