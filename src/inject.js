@@ -239,7 +239,9 @@
         renderer.setBgPhoto(source, w, h);
         state.wantPhoto = false;
         log('background photo captured');
+        photoChanged = true;
         makeThumb();
+        keepPhoto();
       }
       if (state.wantVanish) {
         if (!renderer.vanish(now, source, w, h)) log('vanish skipped: no person mask yet');
@@ -324,15 +326,11 @@
     return disguise(fake, track);
   }
 
-  // The empty background photo is for this call only: forget it once no camera is running.
-  // The cartoon facepalm likewise: a new camera session makes a new one.
+  // The cartoon facepalm is for one camera session: a new one is made when the camera restarts.
   function cameraStopped() {
     state.cameras = Math.max(0, state.cameras - 1);
     if (state.cameras) return;
     if (renderer.hasCartoon) { renderer.clearCartoon(); log('cartoon facepalm cleared (camera stopped)'); }
-    if (!renderer.bgPhoto) return;
-    clearBackground();
-    log('background photo cleared (camera stopped)');
   }
 
   // ---- Overlays on Meet's processed video ---------------------------------
@@ -579,6 +577,38 @@
   function clearBackground() {
     renderer.clearBgPhoto();
     state.thumb = null;
+    photoChanged = true;
+    channel.post({ type: 'dropPhoto' });
+  }
+
+  // The photo is kept for this tab across reloads (by the service worker, in
+  // Chrome's memory only) until ✕ or the tab closes.
+  let photoChanged = false; // captured or cleared here: a late restore must not undo that
+  function keepPhoto() {
+    const photo = renderer.bgPhoto;
+    photo.convertToBlob({ type: 'image/jpeg', quality: 0.9 }).then((blob) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const url = A.sanitizeBgPhoto(reader.result);
+        if (url && renderer.bgPhoto === photo) channel.post({ type: 'savePhoto', photo: url });
+      };
+      reader.readAsDataURL(blob);
+    }).catch(() => {});
+  }
+  function restorePhoto(raw) {
+    const url = A.sanitizeBgPhoto(raw);
+    if (!url || photoChanged) return;
+    // Decoded by hand: Meet's page policy may not allow loading data: URLs.
+    const bin = atob(url.slice(url.indexOf(',') + 1));
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    createImageBitmap(new Blob([bytes], { type: 'image/jpeg' })).then((image) => {
+      if (photoChanged) { image.close(); return; }
+      renderer.restoreBgPhoto(image);
+      image.close();
+      log('background photo restored');
+      makeThumb();
+    }).catch(() => {});
   }
 
   function makeThumb() {
@@ -649,6 +679,7 @@
         break;
       case 'captureBackground': captureBackground(); break;
       case 'clearBackground': clearBackground(); log('background photo cleared'); break;
+      case 'restorePhoto': restorePhoto(msg.photo); break;
       default: break;
     }
   });

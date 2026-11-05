@@ -74,12 +74,23 @@ function makeEffect(cam) {
     c.enqueue(new VideoFrame(cv, { timestamp: f.timestamp })); f.close(); } })).pipeTo(gen.writable);
   return gen;
 }
+// Like turning the camera off and on in a call: stop the track Meet sends and
+// put a fresh camera track in its place on the same connection.
+window.restartCamera = async () => {
+  const sender = window.pc.getSenders().find((x) => x.track && x.track.kind === 'video');
+  sender.track.stop();
+  await new Promise((r) => setTimeout(r, 1500));
+  const s = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 360 }, audio: false });
+  const cam = s.getVideoTracks()[0];
+  await sender.replaceTrack(cam);
+  document.getElementById('self').srcObject = new MediaStream([cam]);
+};
 window.join = async () => {
   const s = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 360 }, audio: false });
   const cam = s.getVideoTracks()[0];
   const sent = MODE === 'plain' ? cam : MODE === 'replace' ? makeReplace(cam) : MODE === 'bgpic' ? makeBgPicture(cam) : makeEffect(cam);
   document.getElementById('self').srcObject = new MediaStream([MODE === 'pipe' ? cam : sent]);
-  const a = new RTCPeerConnection(), b = new RTCPeerConnection();
+  const a = new RTCPeerConnection(), b = new RTCPeerConnection(); window.pc = a;
   b.ontrack = (e) => { const rv = document.getElementById('remote'); rv.srcObject = new MediaStream([e.track]); rv.play().catch(() => {}); };
   a.addTrack(sent, new MediaStream([sent]));
   const gathered = (pc) => new Promise((r) => { if (pc.iceGatheringState === 'complete') r(); else pc.addEventListener('icegatheringstatechange', () => pc.iceGatheringState === 'complete' && r()); setTimeout(r, 3000); });
@@ -328,6 +339,13 @@ async def main():
             await q({'type': 'captureBackground'})
             await page.wait_for_timeout(5800)
             res['has_photo'] = (await q({'type': 'getState'}))['state'].get('hasBackgroundPhoto')
+            step('camera off and on'); await page.evaluate('restartCamera()')
+            await page.wait_for_timeout(4000)
+            st = (await q({'type': 'getState'}))['state']
+            res['photo_after_restart'] = bool(st.get('hasBackgroundPhoto') and st.get('hasCamera'))
+            step('reload'); await page.reload(); await page.evaluate('join()')
+            await page.wait_for_timeout(6000)
+            res['photo_after_reload'] = (await q({'type': 'getState'}))['state'].get('hasBackgroundPhoto')
         await run('cinema', 'cinema', 2400)
         res['cartoon_ready'] = (await q({'type': 'getState'}))['state'].get('cartoonReady')
         await run('facepalm', 'facepalm', 2400)
@@ -348,6 +366,9 @@ async def main():
                 await page.wait_for_timeout(250); g = max(g, (await page.evaluate('sample()'))['green'])
             res['off_again_green'] = g
             await pg.evaluate("chrome.storage.sync.set({enabled: true})")
+        if TAG == 'photo':  # ✕ deletes the kept copy too
+            await q({'type': 'clearBackground'}); await page.wait_for_timeout(1000)
+            res['photo_kept_after_clear'] = len(await pg.evaluate('chrome.storage.session.get(null)'))
         res['errors'] = errs
         html = '<body style="margin:0;background:#000">' + ''.join(f'<img src="{s}" width=160>' for s in shots) + '</body>'
         sheet = await ctx.new_page(); await sheet.set_viewport_size({'width': 640, 'height': 450})

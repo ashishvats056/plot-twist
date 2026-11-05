@@ -43,7 +43,7 @@
     let tiles = [];
     let mode = 'visible';
     let modeAt = 0;
-    let photo = null; // empty background photo for this call, held in memory only
+    let photo = null; // empty background photo, held in memory only
     let photoAtReturn = 0; // how much photo was showing when Return was pressed
 
     function resize(nw, nh) {
@@ -138,6 +138,11 @@
         resize(sw, sh);
         photo = B.makeCanvas(w, h);
         photo.ctx.drawImage(source, 0, 0, w, h);
+      },
+      // A photo kept from before a reload: stored at its own size, drawn scaled to the frame.
+      restoreBgPhoto(image) {
+        photo = B.makeCanvas(image.width, image.height);
+        photo.ctx.drawImage(image, 0, 0);
       },
       clearBgPhoto() { photo = null; },
       debugCanvases: () => ({ background: background.canvas, mask: personMask && personMask.canvas, soft: softMask && softMask.canvas, ...background.debug }),

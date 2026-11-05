@@ -226,6 +226,7 @@
       reappear: (now) => vanish.reappear(now),
       get bgPhoto() { return vanish.bgPhoto; },
       setBgPhoto: (source, sw, sh) => vanish.setBgPhoto(source, sw, sh),
+      restoreBgPhoto: (image) => vanish.restoreBgPhoto(image),
       clearBgPhoto: () => vanish.clearBgPhoto(),
       cinema(now) { s.cinemaAt = now; },
       facepalm(now) { s.facepalmAt = now; },

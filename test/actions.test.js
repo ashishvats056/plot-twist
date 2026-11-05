@@ -149,3 +149,10 @@ test('your own facepalm: emoji or a picture data: URL, nothing else', () => {
   assert.equal(S({ kind: 'script' }), null);
   assert.equal(S(null), null);
 });
+
+test('the kept background photo must be a JPEG data URL of bounded size', () => {
+  assert.equal(A.sanitizeBgPhoto('data:image/jpeg;base64,AAAA'), 'data:image/jpeg;base64,AAAA');
+  for (const bad of [null, 5, 'data:image/png;base64,AAAA', 'data:image/jpeg;base64,AA"><', `data:image/jpeg;base64,${'A'.repeat(3000000)}`]) {
+    assert.equal(A.sanitizeBgPhoto(bad), null);
+  }
+});

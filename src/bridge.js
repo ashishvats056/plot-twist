@@ -3,6 +3,7 @@
 //   popup ──chrome.tabs.sendMessage──► bridge ──token channel──► inject.js
 //   storage.onChanged ───────────────► bridge ──token channel──► inject.js
 //   inject.js ──state──► bridge (cached) ◄──getState── popup
+//   inject.js ──background photo──► bridge ◄──► service worker (worker.js)
 // It also mounts the hidden detector iframe, only when inject.js asks (i.e.
 // when effects are on and a camera started).
 (function () {
@@ -39,8 +40,19 @@
       else mount();
     } else if (msg.type === 'state') {
       state = A.sanitizeState(msg.state);
+    } else if (msg.type === 'savePhoto') {
+      const photo = A.sanitizeBgPhoto(msg.photo);
+      if (photo) chrome.runtime.sendMessage({ type: 'savePhoto', photo }).catch(() => {});
+    } else if (msg.type === 'dropPhoto') {
+      chrome.runtime.sendMessage({ type: 'dropPhoto' }).catch(() => {});
     }
   });
+
+  // The empty background photo taken before a reload (kept by the service worker).
+  chrome.runtime.sendMessage({ type: 'loadPhoto' }).then((res) => {
+    const photo = A.sanitizeBgPhoto(res && res.photo);
+    if (photo) channel.post({ type: 'restorePhoto', photo });
+  }, () => {});
 
   channel.post({ type: 'detectorOrigin', origin: new URL(SRC).origin });
 

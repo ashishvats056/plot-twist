@@ -26,8 +26,9 @@ All processing happens in memory, in your browser, on your device.
   throws each audio block away right after analysing it. With the box unticked,
   Plot Twist doesn't touch your microphone.
 - **Empty background photo** (only if you click "Capture empty background"). One frame is
-  kept in memory for that tab. It is deleted when your camera stops, when you
-  reload or leave the page, or when you click ✕. It is never written to disk.
+  kept in Chrome's memory for that tab, so it lasts through turning your camera
+  off and on and reloading the page. It is deleted when you close the tab, when
+  you click ✕, or when you quit Chrome. It is never written to disk or sent anywhere.
 - **Cartoon facepalm.** Shortly after your camera starts, Plot Twist looks at
   one camera frame on your device and notes a few things to draw a cartoon
   character that looks like you: your skin, hair and shirt colours, and whether

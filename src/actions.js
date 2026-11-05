@@ -23,6 +23,9 @@
   const MAX_COUNTDOWN_S = 10;
   const MAX_THUMB_CHARS = 200000;
   const THUMB_RE = /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/;
+  // The empty background photo itself, kept for its tab across reloads.
+  const MAX_BG_PHOTO_CHARS = 3000000;
+  const BG_PHOTO_RE = /^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/;
 
   // Checkboxes shown in the popup, in order.
   const GESTURE_TOGGLES = Object.freeze([
@@ -93,6 +96,11 @@
     return null;
   }
 
+  // The photo crosses the page, the bridge and the service worker: never trust it.
+  function sanitizeBgPhoto(raw) {
+    return typeof raw === 'string' && raw.length <= MAX_BG_PHOTO_CHARS && BG_PHOTO_RE.test(raw) ? raw : null;
+  }
+
   // c: { mode, hasCamera, trigger(event) } — read live on every call.
   function createActions(c) {
     const visible = () => c.hasCamera && c.mode === 'visible';
@@ -111,7 +119,7 @@
   }
 
   const api = {
-    allowsGesture, createActions, sanitizeSettings, sanitizeState, sanitizeEmoji, sanitizeCustomFacepalm,
+    allowsGesture, createActions, sanitizeSettings, sanitizeState, sanitizeEmoji, sanitizeCustomFacepalm, sanitizeBgPhoto,
     CUSTOM_FACEPALM_KEY, MAX_FACEPALM_BYTES, DEFAULT_SETTINGS, GESTURE_SETTINGS, GESTURE_TOGGLES, TRIGGERS,
   };
   if (typeof module === 'object' && module.exports) module.exports = api;

@@ -32,7 +32,7 @@ SCENARIOS = {
     'live-plain': (['live', 'plain', 'remote'], [BASIC, 'live-switch:OK']),
     'live-effect': (['live', 'effect', 'remote'], [BASIC, 'live-switch:OK']),
     'meet-bg-picture': (['t', 'bgpic', 'remote'], ['vanish:OK', 'meet-bg-fills:OK']),
-    'photo-plain': (['photo', 'plain', 'remote'], ['vanish:OK', 'photo-fade:OK']),
+    'photo-plain': (['photo', 'plain', 'remote'], ['vanish:OK', 'photo-fade:OK', 'photo-kept:OK']),
     'cartoon-remote': (['t', 'plain', 'remote', 'face'], [BASIC, 'facepalm-kind:cartoon']),
     'cartoon-replace': (['t', 'replace', 'remote', 'face'], [BASIC, 'facepalm-kind:cartoon']),
     'custom-picture': (['custom', 'plain', 'remote', 'face'], [BASIC, 'facepalm-kind:custom']),

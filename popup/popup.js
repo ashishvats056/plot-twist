@@ -126,7 +126,7 @@
     $('capture-label').textContent = counting ? `Step out of frame… ${state.countdown}`
       : `${hasPhoto ? 'Retake' : 'Capture'} empty background`;
     $('capture-hint').textContent = counting ? 'Taking the photo when the count ends'
-      : hasPhoto ? 'Used when you vanish (this call only)'
+      : hasPhoto ? 'Used when you vanish (kept until you close this tab)'
         : state && state.meetEffect ? 'Optional with a Meet background' : 'Step out of frame for 5 s';
     const thumb = state && state.hasBackgroundPhoto && state.thumb;
     $('thumb-wrap').hidden = !(state && state.hasBackgroundPhoto);

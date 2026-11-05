@@ -37,6 +37,9 @@ if 'has_photo' in d:
     # A jump into the photo shows up as one frame changing far more than its neighbours.
     spikes = [i for i in range(1, len(v) - 1) if v[i] > 3 * max(1.0, (v[i - 1] + v[i + 1]) / 2) and v[i] > 6]
     extra += f" photo-fade:{'OK' if d['has_photo'] and not spikes else 'FAIL'}"
+    if 'photo_after_restart' in d:  # the photo survives camera off/on and a reload; ✕ deletes it
+        kept = d['photo_after_restart'] and d.get('photo_after_reload') and d.get('photo_kept_after_clear') == 0
+        extra += f" photo-kept:{'OK' if kept else 'FAIL'}"
 if d.get('mode') == 'bgpic':
     extra += f" meet-bg-fills:{'OK' if d['blue_in_vanished'] > 0.35 else 'FAIL'}(person area {d['blue_in_vanished']:.0%} Meet picture)"
 if 'cartoon_ready' in d:
