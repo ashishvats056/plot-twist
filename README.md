@@ -42,13 +42,13 @@ Add an entry to `createActions` in `src/actions.js` (`id`, `icon`, `label`, `ena
 
 ### Keyboard shortcuts (backup and testing)
 
-| Keys | Action |
-|---|---|
-| Alt+Shift+S | Vanish / Return |
-| Alt+Shift+M | Money rain |
-| Alt+Shift+C | Absolute Cinema |
-| Alt+Shift+F | Facepalm |
-| Alt+Shift+D | Debug overlay (local harness only) |
+| Windows / Linux | Mac | Action |
+|---|---|---|
+| Alt+Shift+S | Option+Shift+S | Vanish / Return |
+| Alt+Shift+M | Option+Shift+M | Money rain |
+| Alt+Shift+C | Option+Shift+C | Absolute Cinema |
+| Alt+Shift+F | Option+Shift+F | Facepalm |
+| Alt+Shift+D | Option+Shift+D | Debug overlay (local harness only) |
 
 ### The facepalm
 

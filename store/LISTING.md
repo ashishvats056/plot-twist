@@ -26,7 +26,7 @@ Everyone in the call sees the effects. Only you see the controls.
 Three ways to set them off:
 • With a gesture: snap your fingers to vanish (and snap again to return), snap twice quickly for money rain, raise both hands for Absolute Cinema, or put your hand on your face to facepalm. Turn each one on in the popup. Snap detection listens to your microphone for the click.
 • With a button: click the Plot Twist icon in the toolbar and pick an effect. Nothing to detect, so it always works.
-• With the keyboard: Alt+Shift+S (vanish/return), M (money rain), C (cinema), F (facepalm).
+• With the keyboard, in the Meet tab: Alt+Shift (Option+Shift on a Mac) plus S (vanish/return), M (money rain), C (cinema) or F (facepalm).
 
 Make it your own: the buttons mean you can pair any effect with any move you like. Wave goodbye and vanish as you leave the call. Throw your hands up and make it rain when the deal closes. Lean back, slow-clap or drop a mic, then hit Cinema. Click right as you do it, and the call sees a perfectly timed plot twist.
 
@@ -43,7 +43,7 @@ Works on meet.google.com. Requires a recent version of Chrome.
 
 ## Permission justifications
 - Host access `https://meet.google.com/*`: Plot Twist has to process the camera video on Google Meet pages to draw the effects. It runs on no other site.
-- `storage`: saves the Effects switch, the auto-detect checkboxes, and your own facepalm emoji or picture (local only).
+- `storage`: saves the Effects switch, the auto-detect checkboxes, and your own facepalm emoji or picture (local only). It also keeps the empty background photo for its tab in Chrome's memory (`chrome.storage.session`, never on disk) until the tab is closed or the user clicks ✕.
 - Optional host access `https://*/*`: asked for one site at a time, only when the user adds a facepalm picture from a link; used for that one download and removed straight after.
 - Remote code: none. All code, including the MediaPipe wasm runtime, is bundled.
 
@@ -52,12 +52,15 @@ Works on meet.google.com. Requires a recent version of Chrome.
 - Certify: data is not sold, not used for purposes unrelated to the single purpose, and not used for creditworthiness or lending.
 - Privacy policy URL: host PRIVACY.md (e.g. GitHub Pages or the repo's PRIVACY.md).
 
-## Screenshots needed (1280×800 or 640×400)
+## Screenshots (1280×800, final, in `dist/store-assets/`)
 1. Popup open beside a Meet call (light mode).
 2. Vanish mid-dust, seen from another participant.
 3. Absolute Cinema frame.
 4. Money rain frame.
-5. Popup in dark mode.
+5. Cartoon facepalm.
+
+## Demo video
+`dist/store-assets/plot-twist-demo.mp4` (39.7 s, 1080p, no sound). The store only takes a YouTube link: upload it to YouTube as Unlisted, then paste the link in the Store listing tab.
 
 ## Promo images
 - Small promo tile (440×280): `python3 dev/tools/make_promo.py` writes `dist/store-assets/promo-small-440x280.png`.
