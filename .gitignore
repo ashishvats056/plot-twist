@@ -10,3 +10,4 @@ assets/facepalm.gif
 dist/
 # E2E artefacts (fake camera video, browser profiles, contact sheets)
 dev/e2e/out/
+__pycache__/
