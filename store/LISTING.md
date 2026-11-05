@@ -15,17 +15,22 @@ Plot Twist adds visual effects to the camera video you send in Google Meet calls
 ## Description
 Drop a plot twist into your next Google Meet call.
 
-Click the Plot Twist icon in the toolbar during a call, then:
-• Vanish: you dissolve into dust and disappear, while your background stays live. Click Return to re-form.
+The effects:
+• Vanish: you dissolve into dust and disappear, while your background stays live. Snap again (or click Return) to re-form.
 • Money rain: banknotes fall across your video.
-• Absolute Cinema: your video turns black-and-white with a dramatic title. You can also trigger it by raising both hands.
+• Absolute Cinema: your video turns black-and-white with a dramatic title.
 • Facepalm: a cute animated cartoon of you facepalming, made on your device. Or add your own: any emoji, picture, GIF or picture link (hover over Facepalm and click ✎).
 
 Everyone in the call sees the effects. Only you see the controls.
 
-Tip: capture a photo of your empty background first. Step out of frame during the 5-second countdown, and your vanish will then fade cleanly into that photo.
+Three ways to set them off:
+• With a gesture: snap your fingers to vanish (and snap again to return), snap twice quickly for money rain, raise both hands for Absolute Cinema, or put your hand on your face to facepalm. Turn each one on in the popup. Snap detection listens to your microphone for the click.
+• With a button: click the Plot Twist icon in the toolbar and pick an effect. Nothing to detect, so it always works.
+• With the keyboard: Alt+Shift+S (vanish/return), M (money rain), C (cinema), F (facepalm).
 
-Optional gesture control: turn on auto-detect for finger snaps (vanish/return; uses your microphone to hear the snap), facepalm and the Cinema gesture.
+Make it your own: the buttons mean you can pair any effect with any move you like. Wave goodbye and vanish as you leave the call. Throw your hands up and make it rain when the deal closes. Lean back, slow-clap or drop a mic, then hit Cinema. Click right as you do it, and the call sees a perfectly timed plot twist.
+
+Tip: capture a photo of your empty background first. Step out of frame during the 5-second countdown, and your vanish will then fade cleanly into that photo. It is kept for the whole call, until you close the tab.
 
 Private by design
 • Everything runs on your device. No servers, no analytics, no network requests (except downloading a facepalm picture from a link, once, if you add one).
